@@ -19,7 +19,7 @@ import re
 import sys
 from pathlib import Path
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 DOCS_DATE = "2026-10-01"
 CHARS_PER_TOKEN = 4  # estimation grossière, étiquetée comme telle dans la sortie
 DEFAULT_DESC_CAP = 1536  # doc skills : plafond description + when_to_use dans le listing
@@ -298,7 +298,7 @@ def collect_rules(config_dir: Path, project_dir: Path) -> dict:
 
 
 def collect_agents(config_dir: Path, project_dir: Path) -> dict:
-    total = without_model = 0
+    total = without_model = with_effort = 0
     for root in (config_dir / "agents", project_dir / ".claude" / "agents"):
         if not root.is_dir():
             continue
@@ -307,7 +307,9 @@ def collect_agents(config_dir: Path, project_dir: Path) -> dict:
             meta = parse_frontmatter(read_text(path) or "")
             if not meta.get("model"):
                 without_model += 1
-    return {"total": total, "without_model": without_model}
+            if meta.get("effort"):
+                with_effort += 1
+    return {"total": total, "without_model": without_model, "with_effort": with_effort}
 
 
 def collect_hooks(settings: dict) -> dict:
@@ -386,6 +388,7 @@ def analyse(config_dir: Path, project_dir: Path) -> dict:
         "memory_max_lines": max((f["lines"] for f in memory), default=0),
         "agents_total": agents["total"],
         "agents_without_model": agents["without_model"],
+        "agents_with_effort": agents["with_effort"],
         "rules_unconditional": rules["unconditional"],
         "autocompact_window": window_value,
         "precompact_hooks": hooks.get("PreCompact", 0),
@@ -479,7 +482,8 @@ def analyse(config_dir: Path, project_dir: Path) -> dict:
         heavy_sources.append(f"CLAUDE_CODE_EFFORT_LEVEL={env_effort.lower()}")
     top_effort, top_scope = setting(settings, "effortLevel")
     if isinstance(top_effort, str) and top_effort.lower() in HEAVY_EFFORTS:
-        heavy_sources.append(f"effortLevel={top_effort.lower()} ({top_scope})")
+        note = " : sans effet sur Opus 5.5 et suivants" if top_scope == "user" else ""
+        heavy_sources.append(f"effortLevel={top_effort.lower()} ({top_scope}{note})")
     model_settings, _ = setting(settings, "modelSettings")
     if isinstance(model_settings, dict):
         for model, entry in model_settings.items():
@@ -493,8 +497,9 @@ def analyse(config_dir: Path, project_dir: Path) -> dict:
             "Les niveaux élevés raisonnent plus longtemps : plus de tokens de sortie. Opus 5.5 et "
             "Sonnet 5.5 démarrent en medium, qui suffit pour la plupart des tâches courantes.",
             "Choisir l'effort par session avec /effort (ou le sélecteur de modèle), et réserver "
-            "high ou xhigh aux tâches difficiles. Sur Opus 5.5, Sonnet 5.5 et Fable 5.1, changer "
-            "d'effort ne casse pas le cache (abonnement ou clé API ; conditions dans la doc).",
+            "high ou xhigh aux tâches difficiles, ou fixer l'effort par type de sous-agent (champ "
+            "effort, sans CLAUDE_CODE_EFFORT_LEVEL posée : elle l'emporte). Sur Opus 5.5, Sonnet 5.5 et Fable 5.1, changer d'effort ne casse pas le cache "
+            "(abonnement ou clé API ; conditions dans la doc).",
             "model-config#adjust-effort-level",
         ))
     user_effort = dict(settings["layers"]).get("user", {}).get("effortLevel")
@@ -503,10 +508,39 @@ def analyse(config_dir: Path, project_dir: Path) -> dict:
             "P3", "effort-toplevel-ignored",
             "effortLevel dans le settings.json utilisateur : sans effet sur Opus 5.5 et les modèles suivants",
             "La documentation indique que cette clé (ancienne forme) ne compte pas pour Opus 5.5 ; "
-            "elle s'applique encore aux modèles antérieurs.",
+            "elle s'applique encore à Opus 5, à Fable 5.1 et aux modèles antérieurs.",
             "Pour Opus 5.5 : /effort ou le sélecteur de modèle (écrit modelSettings), ou la variable "
-            "CLAUDE_CODE_EFFORT_LEVEL.",
+            "CLAUDE_CODE_EFFORT_LEVEL. Pour un sous-agent : champ effort de sa définition.",
             "model-config#adjust-effort-level",
+        ))
+    # 6 bis. Définitions d'agents avec effort
+    if agents["with_effort"] == 0:
+        if agents["total"]:
+            title = (f"Aucun de vos {agents['total']} sous-agents personnalisés ne fixe son effort")
+        else:
+            title = "Aucun sous-agent personnalisé : modèle et effort ne se règlent pas par tâche"
+        findings.append(finding(
+            "P2", "agents-no-effort", title,
+            "La documentation ne décrit qu'un paramètre model à l'appel de l'outil Agent, pas "
+            "d'effort : l'effort d'un sous-agent vient de sa définition (champ effort) ou, à "
+            "défaut, de la session. Sans définition, une tâche simple tourne au niveau d'effort de "
+            "la session, et une tâche d'analyse ne peut pas être montée en effort sans changer "
+            "toute la session.",
+            "Copier les quatre définitions de examples/agents/ du skill (executant, analyste, expert, "
+            "trieur) dans ~/.claude/agents/, ou écrire les vôtres avec model et effort. Une "
+            "définition est un fichier : elle ne change rien tant qu'un agent n'est pas appelé.",
+            "sub-agents#supported-frontmatter-fields, sub-agents#choose-a-model, model-config#set-the-effort-level",
+        ))
+    if agents["with_effort"] and env_effort and env_effort.strip().lower() != "auto":
+        findings.append(finding(
+            "P2", "effort-env-overrides-agents",
+            f"CLAUDE_CODE_EFFORT_LEVEL est posée alors que {agents['with_effort']} agent(s) fixent leur effort",
+            "Le champ effort d'un sous-agent remplace l'effort de la session, mais pas la variable "
+            "CLAUDE_CODE_EFFORT_LEVEL : tant qu'elle est posée, tous les agents tournent à son niveau. "
+            "(Un plafond maxEffortLevel ou d'organisation limite les deux ; il n'est pas lisible ici.)",
+            "Retirer la variable (et choisir l'effort de la session avec /effort), ou renoncer à "
+            "l'effort par type d'agent.",
+            "model-config#set-the-effort-level",
         ))
     # 7. Workflows automatiques
     ultracode, _ = setting(settings, "ultracode")
@@ -646,7 +680,8 @@ def render_text(report: dict, top: int) -> str:
     out.append(f"  Serveurs MCP actifs : {m['mcp_servers_active']} (configurés : {m['mcp_servers_configured']})")
     out.append(f"  Fichiers CLAUDE.md : {m['memory_files']}, environ {m['memory_est_tokens']} tokens, "
                f"le plus long {m['memory_max_lines']} lignes")
-    out.append(f"  Sous-agents personnalisés : {m['agents_total']} dont {m['agents_without_model']} sans modèle déclaré")
+    out.append(f"  Sous-agents personnalisés : {m['agents_total']} dont {m['agents_without_model']} sans modèle déclaré, "
+               f"{m['agents_with_effort']} avec effort déclaré")
     window = m["autocompact_window"]
     out.append(f"  Seuil de compaction : {window if window is not None else 'non réglé (défaut du modèle)'}")
     if top and report["skills_heaviest"]:
@@ -678,6 +713,7 @@ def render_compare(report: dict, before: dict) -> str:
     new = report["metrics"]
     keys = ("skills_visible", "skills_with_description", "skills_listing_est_tokens",
             "mcp_servers_active", "memory_est_tokens", "memory_max_lines", "agents_without_model",
+            "agents_with_effort",
             "rules_unconditional", "precompact_hooks")
     for key in keys:
         if key in old and isinstance(old[key], (int, float)) and isinstance(new.get(key), (int, float)):

@@ -18,6 +18,11 @@ d'environnement, en-têtes et URL des serveurs MCP, le contenu des `CLAUDE.md`, 
 et des skills. Les tests vérifient qu'aucun secret fictif ne figure dans la sortie texte ni JSON
 (`tests/test_audit.py`, `test_output_never_contains_secrets`).
 
+Les définitions d'agents sont lues pour la seule présence des champs `model` et `effort`. Les agents
+d'exemple du dépôt ne limitent pas les outils (`tools` absent) ; l'exemple `trieur` utilise
+`omitClaudeMd: true`, ce qui le prive de vos consignes de sécurité : voir
+[BONNES-PRATIQUES.md](BONNES-PRATIQUES.md#table-de-décision--tâche-vers-agent).
+
 ## Ce que le rapport contient quand même
 
 Des **noms** : skills, serveurs MCP, chemins relatifs au dossier personnel (remplacé par `~`), et

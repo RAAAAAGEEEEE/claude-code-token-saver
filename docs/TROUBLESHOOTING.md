@@ -10,6 +10,7 @@
 | Le listing estimé diffère de la ligne Skills de `/context` | Le script estime à environ 4 caractères par token et ignore le budget exact du listing | Se fier à `/context` ; le script sert à comparer avant et après. |
 | Un réglage modifié « ne marche pas » | La session ouverte garde son état | Ouvrir une nouvelle session. `CLAUDE.md` demande `/clear`, `/compact` ou un redémarrage. |
 | `effortLevel` posé dans `settings.json` sans effet sur Opus 5.5 | Clé ignorée au premier niveau du fichier utilisateur sur ce modèle | Voir [CONFIGURATION.md](CONFIGURATION.md#effort--ne-pas-passer-par-effortlevel-sur-opus-55). |
+| Un agent copié dans `~/.claude/agents/` n'est pas proposé | Le dossier `agents` n'existait pas au lancement de la session (la doc demande un redémarrage après le premier fichier), ou le front-matter est mal formé | Redémarrer Claude Code ; vérifier le front-matter ; `audit.py` doit compter l'agent (ligne « Sous-agents personnalisés »). |
 | `/skill-doctor` introuvable | Claude Code antérieur à v2.1.252, ou récupération des drapeaux de fonctionnalités désactivée | Mettre à jour Claude Code ; sinon `/skills` (touche `t` pour trier par taille). |
 | Caractères mal affichés sous Windows | Console en codage ancien | Le script force l'UTF-8 ; sinon `chcp 65001` ou `PYTHONIOENCODING=utf-8`. |
 | `Comparaison impossible` | Fichier `--compare` absent ou non écrit par `--save` | Refaire `--save avant.json` avant de modifier. |

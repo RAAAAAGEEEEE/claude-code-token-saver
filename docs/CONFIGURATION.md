@@ -26,9 +26,19 @@ Sur Opus 5.5 et les modèles suivants, un `effortLevel` de premier niveau dans l
 modèles. Le détail et la marche à suivre sont dans
 [BONNES-PRATIQUES.md](BONNES-PRATIQUES.md#leviers-dans-les-réglages).
 
+### Effort et modèle par type de sous-agent
+
+La documentation ne décrit qu'un paramètre `model` à l'appel de l'outil Agent : l'effort d'un
+sous-agent se fixe dans sa définition (champ `effort`), sauf si `CLAUDE_CODE_EFFORT_LEVEL` est posée
+(elle l'emporte). Quatre définitions génériques sont fournies dans
+[../examples/agents/](../examples/agents/) (`executant`, `analyste`, `expert`, `trieur`). À copier dans
+`~/.claude/agents/` ; la table de décision et la procédure d'installation sont dans
+[BONNES-PRATIQUES.md](BONNES-PRATIQUES.md#choisir-le-sous-agent-le-modèle-et-leffort).
+
 ### Paragraphe CLAUDE.md
 
-Modèle : [../examples/CLAUDE.md.example](../examples/CLAUDE.md.example). Ajoutez-le à votre
+Modèle : [../examples/CLAUDE.md.example](../examples/CLAUDE.md.example) (économie de tokens, choix
+du sous-agent, instructions de compaction). Ajoutez-le à votre
 `CLAUDE.md` (global ou de projet) ; il ne s'applique qu'après `/clear`, `/compact` ou un redémarrage.
 
 ## Ce que l'audit lit
@@ -39,7 +49,7 @@ Modèle : [../examples/CLAUDE.md.example](../examples/CLAUDE.md.example). Ajoute
 | `<config>/skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `skills/synced/*/SKILL.md` | nom, description, `when_to_use`, `disable-model-invocation` | le corps des skills |
 | `<config>/CLAUDE.md`, `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md` | nombre de lignes, de caractères, d'imports | le contenu |
 | `<config>/rules/`, `.claude/rules/` | présence d'un champ `paths` | le contenu |
-| `<config>/agents/*.md`, `.claude/agents/*.md` | présence d'un champ `model` | le contenu |
+| `<config>/agents/*.md`, `.claude/agents/*.md` | présence d'un champ `model` et d'un champ `effort` (jamais leur valeur) | le contenu |
 | `<config>/.claude.json` ou `~/.claude.json`, `.mcp.json` | noms des serveurs MCP, liste des serveurs désactivés du projet | commandes, arguments, `env`, en-têtes, URL |
 
 Clés de `settings.json` lues : `autoCompactWindow`, `skillOverrides`, `skillListingMaxDescChars`,

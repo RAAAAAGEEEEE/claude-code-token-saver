@@ -12,6 +12,9 @@ Ce dépôt la cite et la résume avec ses propres mots ; il n'en reproduit pas d
 réglages, de commandes et de variables sont repris tels quels parce qu'il faut les écrire exactement.
 La documentation officielle fait foi en cas d'écart.
 
+La page de dépréciations des modèles (platform.claude.com) a aussi été consultée le 2026-10-01 pour la
+date de retrait provisoire de Haiku 4.5.
+
 Deux articles tiers sont cités comme retours d'expérience, avec l'étiquette « rapporté » : aucun
 contenu n'en est repris.
 

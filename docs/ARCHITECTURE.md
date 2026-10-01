@@ -13,7 +13,8 @@ claude-code-token-saver/
 │   └── backup.py                 copie horodatée avant modification
 ├── examples/
 │   ├── settings.example.json     réglages génériques
-│   └── CLAUDE.md.example         paragraphe générique
+│   ├── CLAUDE.md.example         paragraphe générique
+│   └── agents/                   quatre définitions d'agents (executant, analyste, expert, trieur)
 ├── docs/                         documentation humaine (leviers, usage, limites…)
 ├── tests/                        tests des scripts et cohérence de la documentation
 └── .github/workflows/tests.yml   tests sous Linux, macOS et Windows

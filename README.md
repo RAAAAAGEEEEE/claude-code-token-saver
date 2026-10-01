@@ -3,13 +3,15 @@
 **In English.** A Claude Code skill that cuts token and quota usage **without losing quality**. It
 runs a read-only audit of your Claude Code setup (`settings.json`, `CLAUDE.md`, skills, MCP servers,
 subagents, hooks), ranks what to fix, applies changes only with your approval and a timestamped
-backup, then measures before and after. Every lever is labelled *official*, *reported* or *to verify*
+backup, then measures before and after. It also ships four generic subagent definitions and a
+decision table that proposes the agent, model and effort per task (an unmeasured convention). Every lever is labelled *official*, *reported* or *to verify*
 with a dated source (official docs checked on 2026-10-01). Python standard library only, no network
 access, no secret ever printed. Documentation is in French.
 
 Skill Claude Code qui réduit la consommation de tokens et de quota **sans perte de qualité** : audit
 en lecture seule de la configuration, rapport priorisé, application avec sauvegarde horodatée et
-accord de l'utilisateur, mesure avant et après.
+accord de l'utilisateur, mesure avant et après, et choix du bon sous-agent, modèle et effort selon la
+tâche.
 
 ## Le problème
 
@@ -32,34 +34,45 @@ monte, en particulier avec beaucoup de skills, de serveurs MCP et de sous-agents
 - Un **déroulé** que Claude suit : audit, rapport priorisé, application avec accord, mesure.
 - Des **leviers sourcés** ([docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md)), chacun avec son
   risque pour la qualité et son étiquette de preuve ; ce qui est écarté, et pourquoi.
+- Un **choix par tâche du sous-agent, du modèle et de l'effort** : la documentation ne décrit qu'un
+  paramètre `model` à l'appel de l'outil Agent, donc des types d'agents sont le moyen documenté de
+  fixer l'effort d'un sous-agent. Quatre définitions génériques (`executant`, `analyste`, `expert`, `trieur`) dans
+  [examples/agents/](examples/agents/), une table de décision tâche vers agent
+  ([docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md#choisir-le-sous-agent-le-modèle-et-leffort)), et
+  un constat d'audit si aucune définition ne fixe l'effort.
 - Des **exemples** génériques de `settings.json` et de paragraphe `CLAUDE.md`
   ([examples/](examples/)).
 
 ## Statut
 
-**Bêta, version 1.0.0** (2026-10-01). Les deux scripts sont couverts par des tests hors ligne
-(`python -m unittest discover -s tests`). Le comportement de Claude avec le skill n'a pas
+**Bêta, version 1.1.0** (2026-10-01). Les deux scripts et les définitions d'agents d'exemple sont couverts
+par des tests hors ligne (`python -m unittest discover -s tests`). Le comportement de Claude avec le skill n'a pas
 d'évaluation automatique, et **aucun gain chiffré n'est promis** : Anthropic ne publie pas la
 pondération du quota ; seule votre mesure fait foi. Voir [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ## Exemple de sortie
 
-Extrait réel sur une configuration **fictive** (58 skills d'exemple, 10 serveurs MCP) :
+Extrait réel (abrégé) de `audit.py 1.1.0` sur une configuration **fictive** : 58 skills dont la
+description fait 233 caractères, 10 serveurs MCP, aucun agent.
 
 ```
-Audit de consommation Claude Code (audit.py 1.0.0, doc du 2026-10-01)
+Audit de consommation Claude Code (audit.py 1.1.0, doc du 2026-10-01)
 
 Mesures (estimations : environ 4 caractères par token, à confirmer avec /context)
   Skills : 58 au total, 58 visibles pour Claude, 58 avec description complète
-  Listing des skills : environ 3509 tokens (sans skillOverrides : environ 3509)
+  Listing des skills : environ 3494 tokens (sans skillOverrides : environ 3494)
   Serveurs MCP actifs : 10 (configurés : 10)
+  Sous-agents personnalisés : 0 dont 0 sans modèle déclaré, 0 avec effort déclaré
   Seuil de compaction : non réglé (défaut du modèle)
 
-Constats (6), du plus utile au moins utile
+Constats (4), du plus utile au moins utile
 1. [P1] Seuil de compaction automatique non réglé
    Action   : Dans une session : /autocompact 400k (valeur d'exemple, entre 100k et 1M). ...
-   Source   : code.claude.com/docs/en/model-config#set-the-auto-compact-window, ...
-2. [P1] Un hook PreCompact est configuré
+2. [P2] Aucun sous-agent personnalisé : modèle et effort ne se règlent pas par tâche
+   Pourquoi : La doc ne décrit qu'un paramètre model à l'appel de l'outil Agent, pas d'effort : ...
+   Action   : Copier les quatre définitions de examples/agents/ du skill (executant, analyste, ...
+   Source   : https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields, ...
+3. [P2] 10 serveurs MCP actifs dans les fichiers de configuration
    ...
 ```
 
@@ -99,10 +112,23 @@ python scripts/audit.py --compare avant.json
 
 Dans Claude Code, relevez aussi `/context` et `/usage` avant et après.
 
+Installer les quatre types d'agents (sans écraser les vôtres, variante PowerShell dans
+[docs/INSTALLATION.md](docs/INSTALLATION.md#installer-les-types-dagents-facultatif)), puis vérifier
+qu'ils sont comptés :
+
+```bash
+mkdir -p ~/.claude/agents
+for f in ~/.claude/skills/claude-code-token-saver/examples/agents/*.md; do
+  [ -e ~/.claude/agents/"$(basename "$f")" ] && echo "existe déjà, ignoré : $(basename "$f")" || cp "$f" ~/.claude/agents/
+done
+python ~/.claude/skills/claude-code-token-saver/scripts/audit.py --top 0 | grep "Sous-agents"
+```
+
 ## Architecture
 
 `SKILL.md` porte le déroulé et les règles dures ; `scripts/audit.py` mesure et signale ;
-`scripts/backup.py` sauvegarde avant toute modification ; `docs/` porte le détail. Rien n'est écrit
+`scripts/backup.py` sauvegarde avant toute modification ; `examples/agents/` fournit les types d'agents ;
+`docs/` porte le détail. Rien n'est écrit
 sans accord. Détail : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Configuration
@@ -121,6 +147,9 @@ partager. Détail : [docs/PRIVACY_AND_SECURITY.md](docs/PRIVACY_AND_SECURITY.md)
 - Les tailles sont des **estimations** (environ 4 caractères par token) ; `/context` fait foi.
 - Le script ne voit pas les connecteurs claude.ai, les serveurs intégrés à l'application, les skills
   de plugins ni les réglages gérés par une organisation.
+- La table de décision tâche vers agent est une convention proposée, non mesurée ; Haiku 4.5 a une date de
+  retrait provisoire au plus tôt le 2026-10-15 (voir
+  [docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md#haiku-et-son-retrait)).
 - Il ne lit pas les commandes de hooks : il signale un hook `PreCompact`, il ne peut pas dire s'il bloque.
 - Les réglages et seuils de Claude Code changent d'une version à l'autre : les leviers sont datés du
   2026-10-01.
@@ -131,7 +160,7 @@ Liste complète : [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ## Feuille de route (non contractuelle)
 
-- Compter les skills et serveurs MCP fournis par des plugins installés.
+- Compter les skills, serveurs MCP et agents fournis par des plugins installés.
 - Évaluations de déclenchement du skill (quelles demandes le chargent).
 - Revérification des leviers à chaque version majeure de Claude Code.
 

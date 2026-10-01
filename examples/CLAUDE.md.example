@@ -10,7 +10,21 @@
   la zone est connue ; ne pas relire un fichier inchangé.
 - Préférer un CLI (gh, git, aws) à un outil MCP quand les deux font le travail.
 - Ne jamais changer le modèle de la session en cours de tâche : le contexte est relu sans cache.
-  Pour un autre modèle, passer par un sous-agent avec le paramètre model.
+  Pour un autre modèle, passer par un sous-agent (type défini avec model et effort, ou paramètre model).
+
+## Choix du sous-agent, du modèle et de l'effort
+
+L'effort d'un sous-agent vient de la définition de son type d'agent. Choisir le type
+d'après la tâche et ne monter que si la tâche l'exige.
+- `executant` (Sonnet, effort medium) : choix par défaut. Code courant, modification mécanique,
+  tests, documentation, rédaction, recherche simple, reprise d'un travail déjà cadré.
+- `analyste` (Sonnet, effort high) : extraction ou analyse de documents, journaux, données ;
+  recherche approfondie avec sources.
+- `expert` (Opus, effort medium) : architecture, logique centrale, sécurité et réseau, refactor
+  entre fichiers, contre-revue, vérification factuelle. Réservé à ces cas.
+- `trieur` (Haiku) : gros volume simple et répétitif, erreur isolée sans gravité.
+- Lecture ou recherche pure : l'agent Explore. Un travail court que tu peux faire toi-même : pas de sous-agent.
+- Baisser l'effort avant de changer de modèle ; xhigh et max seulement si un gain est mesuré.
 
 # Compact instructions
 

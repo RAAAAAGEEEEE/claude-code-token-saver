@@ -7,6 +7,9 @@ Demandez en langage courant ; le skill se charge sur des phrases comme :
 - « Mon quota Claude Code part vite, fais un audit de consommation. »
 - « Audit de consommation puis applique les changements sûrs. »
 - « J'ai appliqué les réglages hier, ça a servi à quelque chose ? »
+- « Quel sous-agent, quel modèle et quel effort pour cette tâche ? » : le skill s'appuie sur la
+  [table de décision](BONNES-PRATIQUES.md#table-de-décision--tâche-vers-agent) et propose d'installer
+  les définitions de `examples/agents/` (avec votre accord).
 - « How do I reduce Claude Code token usage without losing quality? »
 
 Le déroulé complet (audit, rapport, application avec accord, mesure) est décrit dans
@@ -38,7 +41,7 @@ configuration est introuvable ou si `--save` ne peut pas écrire.
   constat donne ce qui est observé, pourquoi c'est coûteux, l'action et la page officielle.
 - Identifiants de constats : `compact-window`, `precompact-hook`, `tool-search-off`,
   `prompt-cache-off`, `subagent-model`, `subagent-force`, `effort-heavy`, `effort-toplevel-ignored`,
-  `ultracode`, `skills-many`, `skills-still-many`, `skills-truncated`, `mcp-many`,
+  `agents-no-effort`, `effort-env-overrides-agents`, `ultracode`, `skills-many`, `skills-still-many`, `skills-truncated`, `mcp-many`,
   `mcp-browser-duplicates`, `memory-long`, `rules-unconditional`, `config-unreadable`.
 
 ### Exemple avant et après
@@ -78,7 +81,9 @@ Lisez à la main, dans l'ordre :
 2. Dans Claude Code : `/skills` (touche `t` pour trier par taille), `/skill-doctor`, `/mcp`,
    `/context`, `/doctor`.
 3. Les `CLAUDE.md` : nombre de lignes (moins de 200 recommandé).
-4. `~/.claude/agents/` et `.claude/agents/` : les fichiers sans champ `model`.
+4. `~/.claude/agents/` et `.claude/agents/` : les fichiers sans champ `model`, et l'absence de tout
+   fichier avec un champ `effort` (voir
+   [BONNES-PRATIQUES.md](BONNES-PRATIQUES.md#choisir-le-sous-agent-le-modèle-et-leffort)).
 
 Puis suivez les modes 2 à 4 de [../SKILL.md](../SKILL.md) en signalant dans le rapport que l'audit
 a été manuel.

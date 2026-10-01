@@ -33,7 +33,7 @@ même page et [costs#manage-agent-team-costs](https://code.claude.com/docs/en/co
 |---|---|---|---|---|
 | Plafonner la fenêtre de compaction | `autoCompactWindow` (100 000 à 1 000 000) ou `/autocompact 400k` | Sans réglage, la compaction attend environ 967 000 tokens sur les modèles à fenêtre de 1 million. Un plafond plus bas évite que chaque requête relise un contexte énorme. | Faible à moyen : une compaction résume et perd du détail. Gardez un fichier de reprise pour les travaux longs. | [officiel] [model-config#set-the-auto-compact-window](https://code.claude.com/docs/en/model-config#set-the-auto-compact-window), [settings-reference#autocompactwindow](https://code.claude.com/docs/en/settings-reference#autocompactwindow) |
 | Modèle des sous-agents | `CLAUDE_CODE_SUBAGENT_MODEL` dans le bloc `env` | Un sous-agent sans modèle déclaré hérite de la session ; cette variable fixe un défaut moins cher (par exemple `sonnet`). Sans `_FORCE`, un modèle passé à l'appel ou déclaré dans l'agent reste prioritaire, et les agents intégrés Explore et Plan ne sont pas concernés (ils héritent du modèle de la session). | Faible à moyen selon la tâche. La doc indique que Sonnet convient à la plupart des tâches de code et coûte moins cher qu'Opus ; gardez un modèle plus fort pour revue et architecture. | [officiel] [sub-agents#choose-a-model](https://code.claude.com/docs/en/sub-agents#choose-a-model), [env-vars](https://code.claude.com/docs/en/env-vars), [costs#choose-the-right-model](https://code.claude.com/docs/en/costs#choose-the-right-model) |
-| Niveau d'effort | `/effort`, sélecteur de modèle, `CLAUDE_CODE_EFFORT_LEVEL` | Les niveaux élevés raisonnent plus longtemps (tokens de sortie). Opus 5.5 et Sonnet 5.5 démarrent en `medium`. Sur Opus 5.5, Sonnet 5.5 et Fable 5.1, changer d'effort ne casse pas le cache (abonnement ou clé API ; pas sur Amazon Bedrock, Google Cloud, une passerelle Claude apps, ni avec `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS` ou une configuration HIPAA). | Faible en `medium` pour les tâches courantes ; montez à `high` ou `xhigh` pour les tâches difficiles. | [officiel] [model-config#adjust-effort-level](https://code.claude.com/docs/en/model-config#adjust-effort-level), [prompt-caching#changing-effort-level](https://code.claude.com/docs/en/prompt-caching#changing-effort-level) |
+| Niveau d'effort | `/effort`, sélecteur de modèle, `CLAUDE_CODE_EFFORT_LEVEL` ; champ `effort` d'un agent ou d'un skill | Les niveaux élevés raisonnent plus longtemps (tokens de sortie). Opus 5.5 et Sonnet 5.5 démarrent en `medium`. Sur Opus 5.5, Sonnet 5.5 et Fable 5.1, changer d'effort ne casse pas le cache (abonnement ou clé API ; pas sur Amazon Bedrock, Google Cloud, une passerelle Claude apps, ni avec `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS` ou une configuration HIPAA). | Faible en `medium` pour les tâches courantes ; montez à `high` ou `xhigh` pour les tâches difficiles. | [officiel] [model-config#adjust-effort-level](https://code.claude.com/docs/en/model-config#adjust-effort-level), [prompt-caching#changing-effort-level](https://code.claude.com/docs/en/prompt-caching#changing-effort-level) |
 | Alléger la liste des skills | `skillOverrides` : `name-only`, `user-invocable-only`, `off` | La description de chaque skill visible est envoyée à chaque session et à chaque sous-agent. `name-only` ne garde que le nom ; `user-invocable-only` cache le skill à Claude mais `/nom` reste possible. | Nul pour les skills conservés. Léger pour ceux passés en `name-only` : Claude les choisit moins bien sans description. | [officiel] [skills#override-skill-visibility-from-settings](https://code.claude.com/docs/en/skills#override-skill-visibility-from-settings) |
 | Repérer les skills inutiles | `/skill-doctor` (v2.1.252 ou plus), `/skills` (touche `t` pour trier par taille) | Montre le coût de chaque skill et s'il a déjà servi. | Aucun, lecture seule. | [officiel] [skills#find-unused-skills](https://code.claude.com/docs/en/skills#find-unused-skills), [commands](https://code.claude.com/docs/en/commands) |
 | Garder les skills utiles lisibles | budget du listing : 1 % de la fenêtre ; plafond de 1 536 caractères par skill (`description` plus `when_to_use`) | Au-delà du budget, les descriptions des skills les moins utilisés sautent en premier. Mettez le cas d'usage principal au début de la description. | Évite une perte de qualité (skills non déclenchés). | [officiel] [skills#skill-descriptions-are-cut-short](https://code.claude.com/docs/en/skills#skill-descriptions-are-cut-short) |
@@ -46,11 +46,140 @@ Un exemple de `settings.json` : [examples/settings.example.json](../examples/set
 expliqué clé par clé dans [CONFIGURATION.md](CONFIGURATION.md). Les réglages s'appliquent aux
 nouvelles sessions.
 
-Attention à une erreur courante : sur Opus 5.5 et les modèles suivants, la clé `effortLevel` placée
-au premier niveau du `settings.json` **utilisateur** n'est pas prise en compte (elle correspond à
-l'ancienne forme). Choisissez l'effort avec `/effort` ou le sélecteur de modèle, qui écrivent
-`modelSettings`, ou avec `CLAUDE_CODE_EFFORT_LEVEL`. [officiel :
+Attention à une erreur courante : sur Opus 5.5 et les modèles publiés après lui, la clé `effortLevel`
+placée au premier niveau du `settings.json` **utilisateur** n'est pas prise en compte (elle correspond
+à l'ancienne forme, qui s'applique encore à Opus 5, Fable 5.1 et avant). Choisissez l'effort avec
+`/effort` ou le sélecteur de modèle, qui écrivent `modelSettings`, avec `CLAUDE_CODE_EFFORT_LEVEL`, ou,
+pour un sous-agent, avec le champ `effort` de sa définition (la variable `CLAUDE_CODE_EFFORT_LEVEL`
+l'emporte alors sur ce champ ; voir
+[choisir le sous-agent, le modèle et l'effort](#choisir-le-sous-agent-le-modèle-et-leffort)). [officiel :
 [model-config#adjust-effort-level](https://code.claude.com/docs/en/model-config#adjust-effort-level)]
+
+## Choisir le sous-agent, le modèle et l'effort
+
+La documentation recommande de faire correspondre le modèle à la tâche : Sonnet pour la plupart des
+tâches de code, un modèle plus fort pour l'architecture, un modèle léger pour les tâches simples
+[officiel : [costs#choose-the-right-model](https://code.claude.com/docs/en/costs#choose-the-right-model)].
+Les types d'agents appliquent ce choix, et celui de l'effort, tâche par tâche. Voici ce que la
+documentation établit, puis une table de décision.
+
+### Ce que la documentation établit
+
+Faits [officiel], pages consultées le 2026-10-01 :
+[sub-agents](https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields),
+[model-config](https://code.claude.com/docs/en/model-config#adjust-effort-level).
+
+- Le front-matter d'un fichier d'agent (`~/.claude/agents/*.md` ou `.claude/agents/*.md`) accepte
+  `model` (`sonnet`, `opus`, `haiku`, `fable`, un identifiant complet comme `claude-opus-5-5`, ou
+  `inherit`) et `effort` (`low`, `medium`, `high`, `xhigh`, `max`, selon ce que le modèle accepte).
+  `effort` remplace l'effort de la session et le niveau enregistré dans les réglages pendant que cet
+  agent travaille, **mais pas la variable `CLAUDE_CODE_EFFORT_LEVEL`**, qui l'emporte. Le réglage géré
+  `maxEffortLevel` et les plafonds d'organisation limitent les deux
+  [officiel : [model-config#set-the-effort-level](https://code.claude.com/docs/en/model-config#set-the-effort-level)].
+- **La documentation ne décrit qu'un paramètre `model` à l'appel de l'outil Agent, aucun paramètre
+  d'effort.** Déduction de l'auteur [à vérifier] : l'effort d'un sous-agent vient donc de sa définition
+  ou de la session, et définir des types d'agents est le moyen documenté de le fixer **pour un
+  sous-agent** (le champ `effort` d'un skill et `/effort` en session restent les leviers hors
+  sous-agent). Ordre de résolution du modèle depuis la v2.1.251 : paramètre `model` de l'appel, puis
+  `model` de la définition, puis `CLAUDE_CODE_SUBAGENT_MODEL`, puis le modèle de la conversation. Avant
+  la v2.1.251, `CLAUDE_CODE_SUBAGENT_MODEL` passait en premier et écrasait le `model` des définitions,
+  donc le `opus` d'`expert`.
+- Les niveaux d'effort existent sur Opus 5.5, Sonnet 5.5, Opus 5, Sonnet 5, Fable 5.1 et 5, Opus 4.8 et
+  4.7 (de `low` à `max`), et sur Opus 4.6 et Sonnet 4.6 (sans `xhigh`). La page ne liste pas Haiku : les
+  modèles absents de la liste ne gèrent pas l'effort, d'où l'absence de champ `effort` dans l'exemple
+  Haiku. Opus 5.5 et Sonnet 5.5 sont en `medium` par défaut.
+- Autres champs utiles : `tools` (liste des outils permis, tous par défaut), `maxTurns` (arrête
+  l'agent après ce nombre de tours ; sa sortie est alors marquée partielle, v2.1.246 ou plus) et
+  `omitClaudeMd: true` (lance l'agent sans les `CLAUDE.md` utilisateur, projet et local ; v2.1.271 ou
+  plus). Par défaut un agent reçoit les `CLAUDE.md` de la session, sauf Explore et Plan.
+- Claude choisit l'agent d'après son champ `description` : une description claire (cas d'emploi, modèle,
+  effort) est ce qui déclenche la bonne délégation. On peut aussi le nommer dans la demande ou écrire
+  `@agent-<nom>`.
+- Priorité des emplacements : réglages gérés, option `--agents`, `.claude/agents/` (projet),
+  `~/.claude/agents/` (utilisateur), puis les agents fournis par des plugins. Un fichier ajouté ou
+  modifié est pris en compte en quelques secondes ; il faut redémarrer après la **création du premier
+  fichier** dans un dossier `agents` qui n'existait pas au lancement de la session, après une
+  modification dans un dossier ajouté avec `--add-dir`, et dans une session lancée avec
+  `--disable-slash-commands` (qui ne surveille pas ces dossiers).
+- Un `effortLevel` de premier niveau dans le `settings.json` utilisateur ne compte pas pour Opus 5.5 et
+  les modèles publiés après lui (la page parle d'Opus 5.5 ; pour Sonnet 5.5, vérifiez avec `/effort`).
+  Il s'applique encore à Opus 5, Fable 5.1 et avant. Dans les réglages de projet, locaux ou gérés, ou
+  passé avec `--settings`, il s'applique à tous les modèles. Claude Code enregistre le niveau par modèle
+  dans `modelSettings` quand vous le choisissez avec `/effort` ou le sélecteur de modèle.
+
+### Table de décision : tâche vers agent
+
+Cette table est **une convention proposée, non mesurée [à vérifier]**. La doc recommande Sonnet pour la
+plupart des tâches de code, Opus pour l'architecture et le raisonnement en plusieurs étapes, et Haiku pour
+les tâches simples
+([costs#choose-the-right-model](https://code.claude.com/docs/en/costs#choose-the-right-model)) ;
+l'affectation fine ci-dessous, et les niveaux d'effort retenus, sont des choix à ajuster sur vos
+tâches. Les définitions sont dans [examples/agents/](../examples/agents/).
+
+| Tâche | Agent | Modèle et effort | Pourquoi, et risque |
+|---|---|---|---|
+| Code du quotidien, modification mécanique, tests, documentation, rédaction, recherche web simple, reprise d'un travail déjà cadré | `executant` (choix par défaut) | Sonnet 5.5, `medium` | La doc juge Sonnet adapté à la plupart des tâches de code. Fixe `medium` quand la session tourne plus haut (sauf si `CLAUDE_CODE_EFFORT_LEVEL` est posée). Risque faible. |
+| Extraction ou analyse de documents, journaux, tableaux ; recherche approfondie avec sources | `analyste` | Sonnet 5.5, `high` | L'exactitude prime sur la vitesse ; l'effort monté coûte plus de tokens de sortie. À réserver aux cas où l'extraction doit être fiable. |
+| Architecture, logique centrale, sécurité et réseau, refactor entre fichiers, contre-revue, vérification factuelle | `expert` | Opus 5.5, `medium` | La doc réserve Opus à l'architecture et au raisonnement en plusieurs étapes. Opus 5.5 démarre en `medium` ; montez à `high` ou `xhigh` seulement si un gain est mesuré. Réservé à ces cas. |
+| Gros volume simple et répétitif : tri, classement, filtrage, comptage, reformatage | `trieur` | Haiku 4.5 (pas d'effort) | La doc le propose pour les tâches simples. Une erreur isolée doit être sans gravité ; l'agent signale les cas ambigus. Outils limités à la lecture. Voir le retrait de Haiku plus bas. |
+| Lecture ou recherche pure dans le code | agent intégré Explore | modèle de la session (plafonné à Opus sur l'API Claude) | Ne charge ni `CLAUDE.md` ni l'état git [officiel : [sub-agents#what-loads-at-startup](https://code.claude.com/docs/en/sub-agents#what-loads-at-startup)]. |
+| Un travail court que la session peut faire directement | aucun sous-agent | modèle de la session | Un sous-agent repart avec son propre prompt, les `CLAUDE.md` et la même configuration de skills et de serveurs MCP, et ses requêtes comptent sur votre quota [officiel : [sub-agents#what-loads-at-startup](https://code.claude.com/docs/en/sub-agents#what-loads-at-startup), [costs#delegate-verbose-operations-to-subagents](https://code.claude.com/docs/en/costs#delegate-verbose-operations-to-subagents)]. |
+
+Règles de conduite associées :
+
+1. **Défaut : `executant`.** Monter d'un cran (`analyste`, puis `expert`) quand la tâche est difficile ou
+   quand un premier essai échoue, pas par précaution.
+2. **Baisser l'effort avant de changer de modèle**, et ne monter à `xhigh` ou `max` que si un gain est
+   mesuré sur vos tâches [à vérifier : règle de l'auteur].
+3. **Un modèle unique imposé à tous les sous-agents** par `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` **ignore le
+   champ `model` de toutes vos définitions** (pas leur `effort`) et empêche Claude de passer un modèle à
+   l'appel : à éviter si vous utilisez ces types
+   ([sub-agents#run-every-subagent-on-one-model](https://code.claude.com/docs/en/sub-agents#run-every-subagent-on-one-model)).
+4. **Ne changez pas le modèle de la session en cours de tâche** : déléguez à un type d'agent à la place
+   (le cache du parent reste intact, voir [le cache](#le-cache--ce-qui-le-casse-ce-qui-le-garde)).
+5. **`omitClaudeMd: true`** (exemple `trieur`) allège le prompt de départ, mais l'agent ne reçoit plus
+   vos consignes de sécurité ni de confidentialité : à réserver à des lots sans donnée sensible, dont
+   le brief contient tout ce qui est nécessaire.
+6. **Variable d'effort et définitions** : si `CLAUDE_CODE_EFFORT_LEVEL` est posée, elle l'emporte sur le
+   champ `effort` de tous vos agents. L'audit le signale (`effort-env-overrides-agents`). Retirez la
+   variable, ou renoncez à l'effort par type d'agent.
+7. **Mesurer** : sur les forfaits Pro, Max, Team et Enterprise, `/usage` attribue la consommation aux
+   sous-agents [officiel :
+   [costs#plan-usage-breakdown](https://code.claude.com/docs/en/costs#plan-usage-breakdown)]. Aucun gain
+   chiffré n'est promis ici.
+
+### Haiku et son retrait
+
+La page des dépréciations
+([platform.claude.com/docs/en/about-claude/model-deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations),
+consultée le 2026-10-01) donne pour `claude-haiku-4-5-20251001` l'état « Active » et une date de retrait
+**provisoire, au plus tôt le 2026-10-15** [officiel]. Quand Haiku sera retiré, remplacez
+l'en-tête de `trieur.md` par :
+
+```yaml
+model: claude-sonnet-5-5
+effort: low
+```
+
+(Sonnet 5.5 accepte `low`, voir la liste ci-dessus ; ce remplacement est une proposition de l'auteur
+[à vérifier].)
+
+### Installer les définitions
+
+```bash
+mkdir -p ~/.claude/agents
+for f in ~/.claude/skills/claude-code-token-saver/examples/agents/*.md; do
+  [ -e ~/.claude/agents/"$(basename "$f")" ] && echo "existe déjà, ignoré : $(basename "$f")" || cp "$f" ~/.claude/agents/
+done
+python ~/.claude/skills/claude-code-token-saver/scripts/audit.py --top 0 | grep "Sous-agents"
+```
+
+La boucle n'écrase aucun agent existant du même nom (comparez à la main en cas de doublon). Variante
+PowerShell : [INSTALLATION.md](INSTALLATION.md#installer-les-types-dagents-facultatif). Si
+`~/.claude/agents/` n'existait pas, redémarrez Claude Code. Ensuite, demandez par exemple : « Utilise
+l'agent analyste pour extraire les montants de ce PDF. » La ligne affichée doit indiquer 3 sous-agents
+avec effort déclaré (executant, analyste, expert), en plus de ceux que vous aviez déjà. Le paragraphe
+[examples/CLAUDE.md.example](../examples/CLAUDE.md.example) explique à Claude quand choisir chacun.
 
 ## Leviers dans les fichiers d'instructions
 
@@ -194,9 +323,11 @@ comme défaut du modèle, `s` ne l'applique qu'à la session (v2.1.257 ou plus).
    sens, en recommandant de viser la fonction utile plutôt qu'un fichier de 2 000 lignes entier
    [rapporté : [codersera](https://codersera.com/blog/how-to-stretch-claude-code-usage-limits-2026/),
    publiée le 2026-06-26, mise à jour le 2026-08-13].
-9. **Un modèle par tâche, choisi au début.** Sonnet pour l'exécution courante, un modèle plus fort
-   pour architecture et raisonnement multi-étapes ; la doc le recommande ainsi. Évitez de changer de
-   modèle au milieu d'une tâche : le contexte est relu sans cache. [officiel : [costs#choose-the-right-model](https://code.claude.com/docs/en/costs#choose-the-right-model),
+9. **Un modèle et un effort par tâche, choisis au début.** Sonnet pour l'exécution courante, un modèle
+   plus fort pour architecture et raisonnement multi-étapes ; la doc le recommande ainsi. Évitez de
+   changer de modèle au milieu d'une tâche : le contexte est relu sans cache. Pour varier par tâche sans
+   toucher à la session, déléguez à un type d'agent défini avec `model` et `effort`
+   ([table de décision](#table-de-décision--tâche-vers-agent)). [officiel : [costs#choose-the-right-model](https://code.claude.com/docs/en/costs#choose-the-right-model),
    [prompt-caching#switching-models](https://code.claude.com/docs/en/prompt-caching#switching-models)]
 10. **Planifiées et équipes : surveiller.** Une tâche planifiée renvoie tout le contexte à chaque
     échéance ; un équipier d'agent consomme tant qu'il n'est pas arrêté. [officiel : [costs](https://code.claude.com/docs/en/costs)]
@@ -248,6 +379,8 @@ Pages officielles (`https://code.claude.com/docs/en/<page>.md`) : `costs`, `prom
 `settings-reference`, `hooks`, `commands`, `interactive-mode`, `desktop`.
 Tarifs : [platform.claude.com/docs/en/about-claude/pricing](https://platform.claude.com/docs/en/about-claude/pricing)
 (consultée, aucun prix repris ici).
+Dépréciations de modèles : [platform.claude.com/docs/en/about-claude/model-deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+(consultée, date de retrait provisoire de Haiku 4.5 reprise).
 Retours tiers [rapporté] : [codersera](https://codersera.com/blog/how-to-stretch-claude-code-usage-limits-2026/)
 (publiée le 2026-06-26, mise à jour le 2026-08-13) ; [thepromptshelf](https://thepromptshelf.dev/blog/claude-code-usage-limits-explained-2026)
 (consultée le 2026-10-01, reprend pour l'essentiel la doc officielle).

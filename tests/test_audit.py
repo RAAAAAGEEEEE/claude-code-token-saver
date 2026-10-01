@@ -165,6 +165,56 @@ class EffortAndModelTests(AuditTestCase):
         metrics = self.run_audit()["metrics"]
         self.assertEqual((metrics["agents_total"], metrics["agents_without_model"]), (2, 1))
 
+    def test_no_agent_definition_flags_missing_effort(self):
+        report = self.run_audit()
+        self.assertIn("agents-no-effort", self.ids(report))
+        self.assertEqual(report["metrics"]["agents_with_effort"], 0)
+
+    def test_agents_without_effort_flagged_with_count(self):
+        write(self.config / "agents" / "a.md", "---\nname: a\ndescription: x\nmodel: sonnet\n---\n")
+        report = self.run_audit()
+        finding = next(f for f in report["findings"] if f["id"] == "agents-no-effort")
+        self.assertIn("1", finding["title"])
+
+    def test_one_agent_with_effort_clears_finding(self):
+        write(self.config / "agents" / "a.md",
+              "---\nname: a\ndescription: x\nmodel: sonnet\neffort: high\n---\n")
+        report = self.run_audit()
+        self.assertNotIn("agents-no-effort", self.ids(report))
+        self.assertEqual(report["metrics"]["agents_with_effort"], 1)
+
+    def test_project_agents_count_too(self):
+        write(self.project / ".claude" / "agents" / "p.md",
+              "---\nname: p\ndescription: x\nmodel: opus\neffort: medium\n---\n")
+        self.assertEqual(self.run_audit()["metrics"]["agents_with_effort"], 1)
+
+    def test_user_toplevel_heavy_effort_is_labelled_ineffective(self):
+        write_json(self.config / "settings.json", {"effortLevel": "high"})
+        report = self.run_audit()
+        heavy = next(f for f in report["findings"] if f["id"] == "effort-heavy")
+        self.assertIn("sans effet sur Opus 5.5", heavy["title"])
+        self.assertIn("effort-toplevel-ignored", self.ids(report))
+
+    def test_effort_env_overrides_agent_effort(self):
+        write(self.config / "agents" / "a.md",
+              "---\nname: a\ndescription: x\nmodel: sonnet\neffort: high\n---\n")
+        write_json(self.config / "settings.json", {"env": {"CLAUDE_CODE_EFFORT_LEVEL": "medium"}})
+        self.assertIn("effort-env-overrides-agents", self.ids(self.run_audit()))
+
+    def test_effort_env_auto_or_no_agent_effort_is_not_a_conflict(self):
+        write(self.config / "agents" / "a.md",
+              "---\nname: a\ndescription: x\nmodel: sonnet\neffort: high\n---\n")
+        write_json(self.config / "settings.json", {"env": {"CLAUDE_CODE_EFFORT_LEVEL": "auto"}})
+        self.assertNotIn("effort-env-overrides-agents", self.ids(self.run_audit()))
+        (self.config / "agents" / "a.md").unlink()
+        write_json(self.config / "settings.json", {"env": {"CLAUDE_CODE_EFFORT_LEVEL": "medium"}})
+        self.assertNotIn("effort-env-overrides-agents", self.ids(self.run_audit()))
+
+    def test_project_toplevel_heavy_effort_not_labelled_ineffective(self):
+        write_json(self.project / ".claude" / "settings.json", {"effortLevel": "high"})
+        heavy = next(f for f in self.run_audit()["findings"] if f["id"] == "effort-heavy")
+        self.assertNotIn("sans effet", heavy["title"])
+
 
 class SkillTests(AuditTestCase):
     def test_counts_and_overrides(self):
@@ -369,6 +419,57 @@ class ExamplesTests(AuditTestCase):
         self.assertEqual(report["overrides"]["name-only"], 1)
         self.assertEqual(report["overrides"]["user-invocable-only"], 1)
 
+    AGENT_EXPECTED = {
+        "executant": ("claude-sonnet-5-5", "medium"),
+        "analyste": ("claude-sonnet-5-5", "high"),
+        "expert": ("claude-opus-5-5", "medium"),
+        "trieur": ("claude-haiku-4-5-20251001", None),
+    }
+
+    def test_example_agents_are_valid(self):
+        folder = ROOT / "examples" / "agents"
+        self.assertEqual(sorted(p.stem for p in folder.glob("*.md")), sorted(self.AGENT_EXPECTED))
+        for name, (model, effort) in self.AGENT_EXPECTED.items():
+            meta = audit.parse_frontmatter((folder / f"{name}.md").read_text(encoding="utf-8"))
+            self.assertEqual(meta["name"], name)
+            self.assertTrue(meta["description"])
+            self.assertEqual(meta["model"], model)
+            self.assertEqual(meta.get("effort"), effort)
+            self.assertIn(meta.get("effort"), (None, "low", "medium", "high", "xhigh", "max"))
+
+    def test_example_agents_clear_the_audit_finding(self):
+        import shutil
+        shutil.copytree(ROOT / "examples" / "agents", self.config / "agents")
+        report = self.run_audit()
+        self.assertNotIn("agents-no-effort", self.ids(report))
+        self.assertEqual(report["metrics"]["agents_total"], 4)
+        self.assertEqual(report["metrics"]["agents_with_effort"], 3)
+        self.assertEqual(report["metrics"]["agents_without_model"], 0)
+
+    def test_example_trieur_is_read_only_and_light(self):
+        meta = audit.parse_frontmatter((ROOT / "examples" / "agents" / "trieur.md").read_text(encoding="utf-8"))
+        self.assertEqual(meta["tools"], "Read, Grep, Glob")
+        self.assertEqual(meta["omitClaudeMd"], "true")
+
+    def test_install_commands_do_not_overwrite_and_are_documented_twice(self):
+        for name in ("README.md", "SKILL.md", "docs/BONNES-PRATIQUES.md", "docs/INSTALLATION.md"):
+            self.assertNotIn("cp -n", (ROOT / name).read_text(encoding="utf-8"), name)
+        install = (ROOT / "docs" / "INSTALLATION.md").read_text(encoding="utf-8")
+        self.assertIn("```powershell", install)
+        self.assertIn("examples\\agents", install)
+        self.assertIn("existe déjà, ignoré", install)
+
+    def test_claude_md_example_names_every_example_agent(self):
+        text = (ROOT / "examples" / "CLAUDE.md.example").read_text(encoding="utf-8")
+        for name in self.AGENT_EXPECTED:
+            self.assertIn(name, text)
+
+    def test_decision_table_names_every_example_agent(self):
+        text = (ROOT / "docs" / "BONNES-PRATIQUES.md").read_text(encoding="utf-8")
+        section = text[text.index("## Choisir le sous-agent, le modèle et l'effort"):]
+        for name in self.AGENT_EXPECTED:
+            self.assertIn(f"`{name}`", section)
+
     def test_claude_md_example_is_short_and_clean(self):
         text = (ROOT / "examples" / "CLAUDE.md.example").read_text(encoding="utf-8")
         self.assertLess(text.count("\n"), 200)
@@ -376,7 +477,8 @@ class ExamplesTests(AuditTestCase):
 
     def test_no_em_dash_in_repo_docs(self):
         offenders = []
-        for path in list(ROOT.glob("*.md")) + list((ROOT / "docs").glob("*.md")) + list((ROOT / "examples").iterdir()):
+        for path in (list(ROOT.glob("*.md")) + list((ROOT / "docs").glob("*.md"))
+                     + [p for p in (ROOT / "examples").rglob("*") if p.is_file()]):
             if "\u2014" in path.read_text(encoding="utf-8"):
                 offenders.append(path.name)
         self.assertEqual(offenders, [])

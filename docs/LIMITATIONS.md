@@ -11,12 +11,18 @@ Ce skill aide à retirer le superflu et à mesurer ; il ne garantit aucune écon
 - **Pas d'évaluation automatique du comportement de Claude** avec le skill (déclenchement, qualité du
   rapport). Seuls les scripts sont testés.
 - Les leviers « rapportés » (articles tiers) ne sont pas mesurés ici.
+- **La table de décision tâche vers agent** (modèles et efforts des quatre agents d'exemple) est une
+  convention de l'auteur, non mesurée : seules les capacités (champs `model` et `effort`, ordre de
+  résolution) sont établies par la documentation. Ajustez-la sur vos tâches.
+- Le constat `agents-no-effort` dit seulement qu'aucune définition ne fixe l'effort ; il ne juge ni la
+  pertinence des niveaux choisis ni la qualité des descriptions.
 
 ## Ce que l'audit ne voit pas
 
 - Les **connecteurs claude.ai**, les serveurs MCP **intégrés à l'application** et ceux fournis par des
   **plugins** : ils ne sont pas dans les fichiers lus. Utilisez `/mcp` et `/context`.
-- Les **skills de plugins** et les skills fournis par une organisation.
+- Les **skills de plugins** et les skills fournis par une organisation, ainsi que les **agents fournis par
+  des plugins** ou par les réglages gérés : seuls `~/.claude/agents/` et `.claude/agents/` sont comptés.
 - Les **réglages gérés** par une organisation, les options de ligne de commande et les variables
   d'environnement propres à l'application de bureau (son éditeur d'environnement local est séparé de
   celui du shell qui lance le script).
