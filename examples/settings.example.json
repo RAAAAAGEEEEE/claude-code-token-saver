@@ -1,0 +1,10 @@
+{
+  "autoCompactWindow": 400000,
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
+  },
+  "skillOverrides": {
+    "exemple-skill-rarement-utile": "name-only",
+    "exemple-skill-manuel": "user-invocable-only"
+  }
+}

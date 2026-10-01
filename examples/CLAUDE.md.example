@@ -1,0 +1,18 @@
+## Économie de tokens (sans perte de qualité)
+
+- Nouvelle tâche sans lien avec la précédente : la commencer après un /clear, jamais à la suite.
+- Sous-agent seulement si le travail demande beaucoup de lectures ou produit une sortie volumineuse :
+  chaque sous-agent recharge le prompt système, les CLAUDE.md, la liste des skills et les outils MCP.
+- Recherche ou lecture pure : l'agent Explore (il ne charge ni les CLAUDE.md ni le statut git).
+- Brief de sous-agent autonome et court ; exiger un rendu condensé (conclusions, chemins, extraits
+  utiles), jamais la copie intégrale de fichiers ou de journaux.
+- Sorties de commandes : filtrer avant de lire (grep, head, tail) ; gros fichiers lus par plage quand
+  la zone est connue ; ne pas relire un fichier inchangé.
+- Préférer un CLI (gh, git, aws) à un outil MCP quand les deux font le travail.
+- Ne jamais changer le modèle de la session en cours de tâche : le contexte est relu sans cache.
+  Pour un autre modèle, passer par un sous-agent avec le paramètre model.
+
+# Compact instructions
+
+Quand tu compactes, conserve : les décisions prises, les fichiers modifiés et pourquoi, les
+commandes de test et leur résultat, les tâches restantes.
