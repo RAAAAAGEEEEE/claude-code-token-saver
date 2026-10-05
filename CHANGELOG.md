@@ -3,6 +3,30 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versions selon [SemVer](https://semver.org/lang/fr/).
 
+## [1.2.0] - 2026-10-05
+
+### Ajouté
+- `scripts/audit.py` (passe en 1.2.0) : option `--depense [--jours N]`, en lecture seule. Elle lit les
+  champs `usage` des transcriptions `<config>/projects/*/*.jsonl` et des sous-agents (`subagents/`) et
+  affiche le coût estimé en équivalent API par projet, par modèle, pour les sous-agents et par composante
+  (entrée, écriture de cache, lecture de cache, sortie). Table de tarifs `PRICES` en constante, datée
+  (2026-10-05) et sourcée (page de prix officielle) ; un modèle sans tarif est listé à part, sans coût.
+  Documentée dans `docs/USAGE.md`, testée dans `tests/test_depense.py`.
+- `docs/BONNES-PRATIQUES.md`, section « Exemple mesuré sur un usage réel : où part l'argent » (mesures de
+  l'auteur du 2026-10-05, sur 5 jours, arrondies, étiquetées [rapporté]) : héritage du modèle de la
+  session par les sous-agents sans modèle déclaré et ordre de grandeur de son coût ; répartition du coût
+  (écriture de cache et sorties d'outils plutôt que contexte fixe en cache) ; condition d'exécution à
+  placer dans le script d'un pipeline `claude -p` plutôt que dans le prompt, avec un statut « attente avec
+  date » ; poids de départ d'une session de bureau (environ 75 000 tokens) et part réglable ; coût
+  d'un relais de messagerie, nul pour les notifications par script.
+- Même document : exemple `CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000` (fenêtre effective ramenée au minimum
+  des deux valeurs) et « Opus planifie, Sonnet exécute » étiqueté [rapporté, à mesurer].
+- `SKILL.md`, `README.md`, `docs/LIMITATIONS.md`, `docs/PRIVACY_AND_SECURITY.md` : mention de `--depense`
+  et de ses limites (estimation, pas une facture ; aucun contenu de conversation conservé).
+
+### Modifié
+- Dates : documentation officielle toujours vérifiée le 2026-10-01 ; tarifs et mesures du 2026-10-05.
+
 ## [1.1.0] - 2026-10-01
 
 ### Ajouté

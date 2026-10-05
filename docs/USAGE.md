@@ -19,6 +19,7 @@ Le déroulé complet (audit, rapport, application avec accord, mesure) est décr
 
 ```bash
 python scripts/audit.py [--config-dir DIR] [--project-dir DIR] [--json] [--save FICHIER] [--compare FICHIER] [--top N]
+python scripts/audit.py --depense [--jours N] [--json] [--config-dir DIR]
 ```
 
 | Option | Rôle |
@@ -28,7 +29,9 @@ python scripts/audit.py [--config-dir DIR] [--project-dir DIR] [--json] [--save 
 | `--json` | Rapport au format JSON sur la sortie standard. |
 | `--save FICHIER` | Écrit le rapport JSON dans ce fichier, pour une comparaison ultérieure. |
 | `--compare FICHIER` | Après le rapport, affiche les écarts avec un fichier écrit par `--save`. |
-| `--top N` | Nombre de skills les plus lourds à lister (défaut 10, 0 pour aucun). |
+| `--top N` | Nombre de skills les plus lourds à lister (défaut 10, 0 pour aucun) ; avec `--depense`, nombre de projets listés. |
+| `--depense` | Mode mesure de la dépense, en lecture seule (voir plus bas). N'audite pas la configuration. |
+| `--jours N` | Avec `--depense` : fenêtre en jours (défaut 7). |
 
 Codes de sortie : 0 si l'audit s'est déroulé (même avec des constats), 2 si le dossier de
 configuration est introuvable ou si `--save` ne peut pas écrire.
@@ -56,6 +59,29 @@ python scripts/audit.py --compare avant.json
 La section « Comparaison » liste chaque mesure (avant, après, écart) et les constats résolus ou
 nouveaux. Un écart négatif est une économie de contexte ; ce n'est pas une économie de quota
 démontrée (voir [LIMITATIONS.md](LIMITATIONS.md)).
+
+### Mesurer la dépense réelle
+
+```bash
+python scripts/audit.py --depense --jours 5
+```
+
+Le script lit les champs `usage` (`input_tokens`, `cache_creation_input_tokens`,
+`cache_read_input_tokens`, `output_tokens`) des transcriptions `<config>/projects/*/*.jsonl`, y compris
+celles des sous-agents (`*/*/subagents/*.jsonl`), sur les N derniers jours. Chaque message est compté
+une fois. Il affiche le coût **estimé en équivalent API** par projet, par modèle, pour les sous-agents
+(total et par modèle) et par composante (entrée, écriture de cache, lecture de cache, sortie).
+
+- Tarifs : constante `PRICES` de `scripts/audit.py`, datée (`PRICES_DATE`) et sourcée
+  (`PRICES_SOURCE`, page de prix officielle). Un modèle absent de la table est listé à part, sans coût :
+  aucun prix n'est inventé. Revérifiez la table avant de vous fier aux montants.
+- Lecture seule : seuls `usage`, `model`, `timestamp` et l'identifiant du message sont lus ; aucun contenu
+  de conversation n'est affiché ni conservé. Rien n'est écrit.
+- Ce n'est pas une facture : un abonnement n'est pas facturé au token et sa pondération de quota n'est
+  pas publiée ([LIMITATIONS.md](LIMITATIONS.md)). Les montants servent à comparer des postes entre eux.
+- `--json` produit les mêmes totaux au format JSON. Les noms de projets affichés viennent des noms de
+  dossiers des transcriptions : à relire avant de partager la sortie.
+- Interprétation d'un exemple mesuré : [BONNES-PRATIQUES.md](BONNES-PRATIQUES.md#exemple-mesuré-sur-un-usage-réel--où-part-largent).
 
 ## Le script de sauvegarde
 

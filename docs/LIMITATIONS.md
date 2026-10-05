@@ -8,6 +8,10 @@ Ce skill aide à retirer le superflu et à mesurer ; il ne garantit aucune écon
   cache dans le quota d'un abonnement. Les écarts affichés par `--compare` sont des écarts de
   **contexte estimé**, pas des économies de quota démontrées. Seules `/usage` et votre expérience, sur
   des tâches comparables, le disent.
+- **`--depense` est une estimation en équivalent API**, pas une facture ni une part de quota : la table
+  `PRICES` est une copie datée de la page de prix (à revérifier), les modèles absents de la table ne sont
+  pas chiffrés, et les chiffres de l'exemple mesuré de [BONNES-PRATIQUES.md](BONNES-PRATIQUES.md#exemple-mesuré-sur-un-usage-réel--où-part-largent)
+  viennent d'un seul usage.
 - **Pas d'évaluation automatique du comportement de Claude** avec le skill (déclenchement, qualité du
   rapport). Seuls les scripts sont testés.
 - Les leviers « rapportés » (articles tiers) ne sont pas mesurés ici.

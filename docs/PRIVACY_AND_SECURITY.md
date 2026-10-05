@@ -23,6 +23,11 @@ d'exemple du dépôt ne limitent pas les outils (`tools` absent) ; l'exemple `tr
 `omitClaudeMd: true`, ce qui le prive de vos consignes de sécurité : voir
 [BONNES-PRATIQUES.md](BONNES-PRATIQUES.md#table-de-décision--tâche-vers-agent).
 
+`audit.py --depense` lit les transcriptions de conversation en lecture seule, mais ne retient que les
+champs `usage`, `model`, `timestamp` et l'identifiant du message : jamais le texte des échanges
+(test : `tests/test_depense.py`, `test_read_only_and_no_conversation_content`). Il affiche des noms de
+projets dérivés des noms de dossiers : à relire avant de partager la sortie.
+
 ## Ce que le rapport contient quand même
 
 Des **noms** : skills, serveurs MCP, chemins relatifs au dossier personnel (remplacé par `~`), et

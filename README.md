@@ -5,7 +5,7 @@ runs a read-only audit of your Claude Code setup (`settings.json`, `CLAUDE.md`, 
 subagents, hooks), ranks what to fix, applies changes only with your approval and a timestamped
 backup, then measures before and after. It also ships four generic subagent definitions and a
 decision table that proposes the agent, model and effort per task (an unmeasured convention). Every lever is labelled *official*, *reported* or *to verify*
-with a dated source (official docs checked on 2026-10-01). Python standard library only, no network
+with a dated source (official docs checked on 2026-10-01, prices and measurements on 2026-10-05). Python standard library only, no network
 access, no secret ever printed. Documentation is in French.
 
 Skill Claude Code qui réduit la consommation de tokens et de quota **sans perte de qualité** : audit
@@ -31,6 +31,10 @@ monte, en particulier avec beaucoup de skills, de serveurs MCP et de sous-agents
 - Un **script d'audit** portable (`scripts/audit.py`) : nombre de skills et taille de leurs
   descriptions, serveurs MCP, réglages présents ou absents, taille des `CLAUDE.md`, sous-agents sans
   modèle, hooks qui peuvent bloquer la compaction. Il n'affiche jamais de secret.
+- Une **mesure de la dépense réelle** (`audit.py --depense --jours N`, lecture seule) : coût estimé en
+  équivalent API par projet, par modèle et pour les sous-agents, lu dans les transcriptions
+  ([docs/USAGE.md](docs/USAGE.md#mesurer-la-dépense-réelle)), et un exemple mesuré sur un usage réel
+  ([docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md#exemple-mesuré-sur-un-usage-réel--où-part-largent)).
 - Un **déroulé** que Claude suit : audit, rapport priorisé, application avec accord, mesure.
 - Des **leviers sourcés** ([docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md)), chacun avec son
   risque pour la qualité et son étiquette de preuve ; ce qui est écarté, et pourquoi.
@@ -45,18 +49,18 @@ monte, en particulier avec beaucoup de skills, de serveurs MCP et de sous-agents
 
 ## Statut
 
-**Bêta, version 1.1.0** (2026-10-01). Les deux scripts et les définitions d'agents d'exemple sont couverts
+**Bêta, version 1.2.0** (2026-10-05). Les deux scripts et les définitions d'agents d'exemple sont couverts
 par des tests hors ligne (`python -m unittest discover -s tests`). Le comportement de Claude avec le skill n'a pas
 d'évaluation automatique, et **aucun gain chiffré n'est promis** : Anthropic ne publie pas la
 pondération du quota ; seule votre mesure fait foi. Voir [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ## Exemple de sortie
 
-Extrait réel (abrégé) de `audit.py 1.1.0` sur une configuration **fictive** : 58 skills dont la
+Extrait réel (abrégé) de `audit.py 1.2.0` sur une configuration **fictive** : 58 skills dont la
 description fait 233 caractères, 10 serveurs MCP, aucun agent.
 
 ```
-Audit de consommation Claude Code (audit.py 1.1.0, doc du 2026-10-01)
+Audit de consommation Claude Code (audit.py 1.2.0, doc du 2026-10-01)
 
 Mesures (estimations : environ 4 caractères par token, à confirmer avec /context)
   Skills : 58 au total, 58 visibles pour Claude, 58 avec description complète
@@ -144,7 +148,8 @@ partager. Détail : [docs/PRIVACY_AND_SECURITY.md](docs/PRIVACY_AND_SECURITY.md)
 
 ## Limites
 
-- Les tailles sont des **estimations** (environ 4 caractères par token) ; `/context` fait foi.
+- Les tailles sont des **estimations** (environ 4 caractères par token) ; `/context` fait foi. Les
+  montants de `--depense` sont des équivalents API, pas une facture.
 - Le script ne voit pas les connecteurs claude.ai, les serveurs intégrés à l'application, les skills
   de plugins ni les réglages gérés par une organisation.
 - La table de décision tâche vers agent est une convention proposée, non mesurée ; Haiku 4.5 a une date de

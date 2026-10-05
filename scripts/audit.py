@@ -17,9 +17,10 @@ import json
 import os
 import re
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 DOCS_DATE = "2026-10-01"
 CHARS_PER_TOKEN = 4  # estimation grossière, étiquetée comme telle dans la sortie
 DEFAULT_DESC_CAP = 1536  # doc skills : plafond description + when_to_use dans le listing
@@ -332,6 +333,181 @@ def collect_hooks(settings: dict) -> dict:
 # --------------------------------------------------------------------------
 # Analyse
 # --------------------------------------------------------------------------
+
+# Tarifs API en USD par million de tokens : (entrée, écriture cache 5 min, écriture cache 1 h,
+# lecture cache, sortie). Source : https://platform.claude.com/docs/en/about-claude/pricing,
+# consultée le 2026-10-05. Constante à revérifier : les prix changent. Un modèle absent de la table
+# est compté à part, sans coût (jamais de prix inventé). Clés : identifiant sans suffixe de date.
+PRICES_DATE = "2026-10-05"
+PRICES_SOURCE = "https://platform.claude.com/docs/en/about-claude/pricing"
+PRICES = {
+    "claude-fable-5-1": (10.0, 12.5, 20.0, 0.25, 50.0),
+    "claude-fable-5": (10.0, 12.5, 20.0, 1.0, 50.0),
+    "claude-opus-5-5": (4.0, 5.0, 8.0, 0.20, 20.0),
+    "claude-opus-5": (5.0, 6.25, 10.0, 0.50, 25.0),
+    "claude-opus-4-8": (5.0, 6.25, 10.0, 0.50, 25.0),
+    "claude-opus-4-7": (5.0, 6.25, 10.0, 0.50, 25.0),
+    "claude-opus-4-6": (5.0, 6.25, 10.0, 0.50, 25.0),
+    "claude-opus-4-5": (5.0, 6.25, 10.0, 0.50, 25.0),
+    "claude-opus-4-1": (15.0, 18.75, 30.0, 1.50, 75.0),
+    "claude-opus-4": (15.0, 18.75, 30.0, 1.50, 75.0),
+    "claude-sonnet-5-5": (2.0, 2.5, 4.0, 0.20, 10.0),
+    "claude-sonnet-5": (2.0, 2.5, 4.0, 0.20, 10.0),
+    "claude-sonnet-4-6": (3.0, 3.75, 6.0, 0.30, 15.0),
+    "claude-sonnet-4-5": (3.0, 3.75, 6.0, 0.30, 15.0),
+    "claude-sonnet-4": (3.0, 3.75, 6.0, 0.30, 15.0),
+    "claude-haiku-4-5": (1.0, 1.25, 2.0, 0.10, 5.0),
+    "claude-haiku-3-5": (0.80, 1.0, 1.60, 0.08, 4.0),
+}
+
+
+def price_key(model: str) -> str | None:
+    """Clé de PRICES pour un identifiant de modèle (suffixe de date et [1m] ignorés), sinon None."""
+    name = re.sub(r"\[.*?\]$", "", model or "").strip().lower()
+    name = re.sub(r"-\d{8}$", "", name)
+    return name if name in PRICES else None
+
+
+def cache_write_split(usage: dict) -> tuple[int, int]:
+    """(tokens écrits en cache 5 min, tokens écrits en cache 1 h) d'un bloc `usage`."""
+    created = usage.get("cache_creation_input_tokens") or 0
+    detail = usage.get("cache_creation") or {}
+    w1 = detail.get("ephemeral_1h_input_tokens") or 0
+    w5 = detail.get("ephemeral_5m_input_tokens")
+    if w5 is None:
+        w5 = max(created - w1, 0)
+    return w5, w1
+
+
+def usage_parts(model: str, usage: dict) -> dict | None:
+    """Coût estimé en USD par composante d'un bloc `usage`, ou None si le modèle n'a pas de tarif."""
+    key = price_key(model)
+    if key is None:
+        return None
+    p_in, p_w5, p_w1, p_read, p_out = PRICES[key]
+    w5, w1 = cache_write_split(usage)
+    return {
+        "input": (usage.get("input_tokens") or 0) * p_in / 1e6,
+        "cache_write": (w5 * p_w5 + w1 * p_w1) / 1e6,
+        "cache_read": (usage.get("cache_read_input_tokens") or 0) * p_read / 1e6,
+        "output": (usage.get("output_tokens") or 0) * p_out / 1e6,
+    }
+
+
+def usage_cost(model: str, usage: dict) -> float | None:
+    """Coût estimé en USD d'un bloc `usage`, ou None si le modèle n'a pas de tarif."""
+    parts = usage_parts(model, usage)
+    return None if parts is None else sum(parts.values())
+
+
+def project_label(dirname: str) -> str:
+    """Nom lisible d'un dossier de projet (deux derniers segments du chemin encodé)."""
+    parts = [x for x in re.split(r"-+", dirname) if x]
+    return "-".join(parts[-2:]) if len(parts) > 1 else (dirname or "?")
+
+
+def collect_spend(projects_dir: Path, days: int, now: datetime | None = None) -> dict:
+    """Lit en lecture seule les transcriptions `*/*.jsonl` et `*/*/subagents/*.jsonl`.
+
+    Chaque message est compté une fois (identifiant de message ; quand il est écrit en plusieurs
+    blocs, le bloc au plus grand output_tokens est gardé). Seuls les champs `usage`, `model`,
+    `timestamp` et l'identifiant sont lus : aucun contenu de conversation n'est conservé.
+    """
+    now = now or datetime.now(timezone.utc)
+    since = now - timedelta(days=days)
+    seen: dict[str, tuple] = {}
+    files = 0
+    if projects_dir.is_dir():
+        for path in projects_dir.rglob("*.jsonl"):
+            rel = path.relative_to(projects_dir).parts
+            project = rel[0]
+            sub = "subagents" in rel[:-1]
+            files += 1
+            try:
+                handle = open(path, encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            with handle:
+                for line in handle:
+                    if '"usage"' not in line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                    except ValueError:
+                        continue
+                    msg = obj.get("message") if isinstance(obj, dict) else None
+                    if not isinstance(msg, dict) or not isinstance(msg.get("usage"), dict):
+                        continue
+                    try:
+                        when = datetime.fromisoformat(str(obj.get("timestamp")).replace("Z", "+00:00"))
+                    except ValueError:
+                        continue
+                    if when.tzinfo is None:
+                        when = when.replace(tzinfo=timezone.utc)
+                    if when < since:
+                        continue
+                    model = msg.get("model") or "?"
+                    if model == "<synthetic>":
+                        continue
+                    ident = msg.get("id") or obj.get("uuid") or f"{path}:{when.isoformat()}"
+                    old = seen.get(ident)
+                    out_new = msg["usage"].get("output_tokens") or 0
+                    if old is None or out_new >= (old[3].get("output_tokens") or 0):
+                        seen[ident] = (project, sub, model, msg["usage"])
+    by_project: dict[str, float] = {}
+    by_model: dict[str, float] = {}
+    sub_by_model: dict[str, float] = {}
+    components = {"input": 0.0, "cache_write": 0.0, "cache_read": 0.0, "output": 0.0}
+    unpriced: dict[str, int] = {}
+    total = sub_total = 0.0
+    for project, sub, model, usage in seen.values():
+        parts = usage_parts(model, usage)
+        if parts is None:
+            unpriced[model] = unpriced.get(model, 0) + 1
+            continue
+        cost = sum(parts.values())
+        key = price_key(model)
+        label = project_label(project)
+        by_project[label] = by_project.get(label, 0.0) + cost
+        by_model[key] = by_model.get(key, 0.0) + cost
+        total += cost
+        if sub:
+            sub_total += cost
+            sub_by_model[key] = sub_by_model.get(key, 0.0) + cost
+        for name, value in parts.items():
+            components[name] += value
+    return {"days": days, "files": files, "messages": len(seen), "total": total,
+            "subagents_total": sub_total, "by_project": by_project, "by_model": by_model,
+            "subagents_by_model": sub_by_model, "by_component": components, "unpriced": unpriced}
+
+
+def render_spend(spend: dict, top: int = 10) -> str:
+    def rows(data: dict, limit: int | None = None) -> list[str]:
+        items = sorted(data.items(), key=lambda kv: -kv[1])
+        return [f"  {name:<40} {value:>10.2f} $" for name, value in (items[:limit] if limit else items)]
+
+    out = [f"Dépense estimée sur {spend['days']} jours, en équivalent API "
+           f"(tarifs du {PRICES_DATE}, {PRICES_SOURCE})",
+           f"Total : {spend['total']:.2f} $ ({spend['messages']} messages, {spend['files']} transcriptions)"]
+    share = f" ({100 * spend['subagents_total'] / spend['total']:.0f} % du total)" if spend["total"] else ""
+    out.append(f"Dont sous-agents : {spend['subagents_total']:.2f} ${share}")
+    out.append("")
+    out.append("Par projet")
+    out += rows(spend["by_project"], top) or ["  aucun"]
+    out.append("Par modèle")
+    out += rows(spend["by_model"]) or ["  aucun"]
+    out.append("Sous-agents, par modèle")
+    out += rows(spend["subagents_by_model"]) or ["  aucun"]
+    out.append("Par composante")
+    out += rows(spend["by_component"])
+    if spend["unpriced"]:
+        out.append("Modèles sans tarif dans la table (non comptés) : "
+                   + ", ".join(f"{m} ({n} messages)" for m, n in sorted(spend["unpriced"].items())))
+    out.append("")
+    out.append("Estimation : équivalent API, pas la facture d'un abonnement ni sa pondération de quota. "
+               "Lecture seule, aucun contenu de conversation n'est affiché.")
+    return "\n".join(out)
+
 
 def est_tokens(chars: int) -> int:
     return round(chars / CHARS_PER_TOKEN)
@@ -743,6 +919,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--save", metavar="FICHIER", help="écrit le rapport JSON dans ce fichier (pour --compare)")
     parser.add_argument("--compare", metavar="FICHIER", help="compare avec un rapport JSON enregistré avec --save")
     parser.add_argument("--top", type=int, default=10, help="nombre de skills les plus lourds à lister (défaut 10, 0 = aucun)")
+    parser.add_argument("--depense", action="store_true",
+                        help="coût estimé (équivalent API) lu dans les transcriptions, par projet, modèle et sous-agents")
+    parser.add_argument("--jours", type=int, default=7, metavar="N", help="avec --depense : fenêtre en jours (défaut 7)")
     parser.add_argument("--version", action="version", version=f"audit.py {VERSION}")
     args = parser.parse_args(argv)
 
@@ -751,6 +930,14 @@ def main(argv: list[str] | None = None) -> int:
     if not config_dir.is_dir():
         print(f"Dossier de configuration introuvable : {short(config_dir)} (utiliser --config-dir)", file=sys.stderr)
         return EXIT_NO_CONFIG
+
+    if args.depense:
+        if args.jours < 1:
+            print("--jours doit être au moins 1", file=sys.stderr)
+            return EXIT_NO_CONFIG
+        spend = collect_spend(config_dir.resolve() / "projects", args.jours)
+        print(json.dumps(spend, ensure_ascii=False, indent=2) if args.json else render_spend(spend, args.top or 10))
+        return EXIT_OK
 
     report = analyse(config_dir.resolve(), project_dir)
 

@@ -1,7 +1,7 @@
 # Bonnes pratiques : pour aller plus loin
 
 Leviers pour faire dépenser moins de tokens à Claude Code sans perdre en qualité, vérifiés dans la
-documentation officielle le **2026-10-01** (Claude Code en version récente ; les versions minimales
+documentation officielle le **2026-10-01**, avec des mesures et des tarifs du **2026-10-05** (Claude Code en version récente ; les versions minimales
 sont indiquées quand la doc les donne). Le skill applique une partie de ces leviers
 ([SKILL.md](../SKILL.md)) ; ce document sert de référence et de guide manuel.
 
@@ -27,11 +27,49 @@ entre sessions, sous-agents et workflows, équipes d'agents (environ 7 fois plus
 session standard quand les équipiers sont en mode plan), compaction d'un gros contexte, points de contrôle d'objectif en veille. [officiel,
 même page et [costs#manage-agent-team-costs](https://code.claude.com/docs/en/costs#manage-agent-team-costs)]
 
+## Exemple mesuré sur un usage réel : où part l'argent
+
+Mesures de l'auteur du 2026-10-05, lues dans les transcriptions de Claude Code (voir
+[Mesurer](#mesurer)), sur 5 jours, **en équivalent API** (tarifs de la page de prix, pas la facture
+d'un abonnement). Chiffres arrondis, issus d'un seul usage : **exemple mesuré sur un usage réel**, pas
+une promesse de gain. Étiquette : [rapporté], non reproduit ailleurs.
+
+1. **Les sous-agents sans modèle déclaré héritent du modèle de la session.** Cela inclut le type
+   `general-purpose`. Avec une session principale sur Opus, ils ont coûté environ 914 $ sur 1 260 $ pour
+   un projet : contextes de 300 000 à 960 000 tokens, des centaines de tours dans des worktrees.
+   Remède : `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-5-5` dans le bloc `env` de `settings.json`
+   ([réglage](#leviers-dans-les-réglages) ; la définition d'un agent garde la priorité, et
+   `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` existe mais écrase les `model` de vos définitions, voir
+   [ce qui est écarté](#ce-qui-est-écarté-et-pourquoi)). `audit.py --depense` montre cette part chez
+   vous.
+2. **Ce qui coûte n'est pas le contexte fixe relu à chaque tour.** Sur la part Sonnet de la même mesure
+   : lecture de cache environ 171 $, écriture de cache environ 115 $, sortie environ 68 $. Le contexte fixe
+   est en cache, donc peu cher à relire. Ce qui coûte : chaque **nouveau** contexte (nouveau sous-agent,
+   nouvelle exécution `claude -p`, cache expiré) qui réécrit le cache, et les sorties d'outils
+   volumineuses qui restent dans le contexte. D'où : moins de sessions et de sous-agents jetables ;
+   sorties filtrées (`grep`, `tail`, plage de lignes) ; lectures lourdes confiées à un sous-agent de
+   lecture qui ne rend que la conclusion.
+3. **Un pipeline `claude -p` en cron doit décider avant de lancer le modèle.** Pour une file de tâches
+   exécutée par `claude -p`, 240 lancements de moins de 90 secondes ont coûté environ 33 $ pour des tâches
+   qui ne pouvaient rien faire avant une date : chaque lancement repaie environ 30 000 tokens de contexte.
+   Remède : mettre la condition (date « pas avant », prérequis, verrou) **dans le script** qui lance le
+   modèle, pas dans le prompt. Prévoir aussi un statut « attente avec date » que le modèle peut renvoyer
+   pour reporter une tâche sans la compter comme un échec.
+4. **Une session de bureau démarre à environ 75 000 tokens avant tout travail** : prompt système,
+   schémas d'outils intégrés, noms d'outils MCP différés, liste des skills, `CLAUDE.md`, index mémoire. La
+   part réglable par l'utilisateur est petite : connecteurs inutiles (chaque outil différé coûte son nom),
+   skills (`skillOverrides`), `CLAUDE.md`. Le reste vient de l'application. Coupez les connecteurs inutiles
+   au projet (menu **+** puis **Connecteurs** de l'application, qui s'applique aussi aux nouvelles sessions,
+   voir [actions manuelles](#actions-manuelles-dans-lapplication)), sans en attendre un gros gain.
+5. **Un relais de messagerie coûte peu ; les notifications par script, rien.** Un relais (Telegram ou
+   autre) qui fait répondre Claude a coûté environ 1 % du quota hebdomadaire pour 67 messages en 7 jours.
+   Les notifications envoyées par un script ne consomment aucun token : il ne faut pas s'en priver.
+
 ## Leviers dans les réglages
 
 | Levier | Où | Effet | Risque pour la qualité | Preuve |
 |---|---|---|---|---|
-| Plafonner la fenêtre de compaction | `autoCompactWindow` (100 000 à 1 000 000) ou `/autocompact 400k` | Sans réglage, la compaction attend environ 967 000 tokens sur les modèles à fenêtre de 1 million. Un plafond plus bas évite que chaque requête relise un contexte énorme. | Faible à moyen : une compaction résume et perd du détail. Gardez un fichier de reprise pour les travaux longs. | [officiel] [model-config#set-the-auto-compact-window](https://code.claude.com/docs/en/model-config#set-the-auto-compact-window), [settings-reference#autocompactwindow](https://code.claude.com/docs/en/settings-reference#autocompactwindow) |
+| Plafonner la fenêtre de compaction | `autoCompactWindow` (100 000 à 1 000 000) ou `/autocompact 400k` | Sans réglage, la compaction attend environ 967 000 tokens sur les modèles à fenêtre de 1 million. Un plafond plus bas évite que chaque requête relise un contexte énorme. | Faible à moyen : une compaction résume et perd du détail. Gardez un fichier de reprise pour les travaux longs. Exemple : `CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000` (ou la clé `autoCompactWindow`) ramène la fenêtre effective au minimum entre la fenêtre du modèle et cette valeur ; l'indicateur de contexte paraît alors « plein » vers 300 000 tokens au lieu de 1 million. C'est voulu : cela rappelle de faire un `/clear` avec fichier de reprise vers 250 000 tokens [rapporté, non mesuré]. | [officiel] [model-config#set-the-auto-compact-window](https://code.claude.com/docs/en/model-config#set-the-auto-compact-window), [settings-reference#autocompactwindow](https://code.claude.com/docs/en/settings-reference#autocompactwindow) |
 | Modèle des sous-agents | `CLAUDE_CODE_SUBAGENT_MODEL` dans le bloc `env` | Un sous-agent sans modèle déclaré hérite de la session ; cette variable fixe un défaut moins cher (par exemple `sonnet`). Sans `_FORCE`, un modèle passé à l'appel ou déclaré dans l'agent reste prioritaire, et les agents intégrés Explore et Plan ne sont pas concernés (ils héritent du modèle de la session). | Faible à moyen selon la tâche. La doc indique que Sonnet convient à la plupart des tâches de code et coûte moins cher qu'Opus ; gardez un modèle plus fort pour revue et architecture. | [officiel] [sub-agents#choose-a-model](https://code.claude.com/docs/en/sub-agents#choose-a-model), [env-vars](https://code.claude.com/docs/en/env-vars), [costs#choose-the-right-model](https://code.claude.com/docs/en/costs#choose-the-right-model) |
 | Niveau d'effort | `/effort`, sélecteur de modèle, `CLAUDE_CODE_EFFORT_LEVEL` ; champ `effort` d'un agent ou d'un skill | Les niveaux élevés raisonnent plus longtemps (tokens de sortie). Opus 5.5 et Sonnet 5.5 démarrent en `medium`. Sur Opus 5.5, Sonnet 5.5 et Fable 5.1, changer d'effort ne casse pas le cache (abonnement ou clé API ; pas sur Amazon Bedrock, Google Cloud, une passerelle Claude apps, ni avec `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS` ou une configuration HIPAA). | Faible en `medium` pour les tâches courantes ; montez à `high` ou `xhigh` pour les tâches difficiles. | [officiel] [model-config#adjust-effort-level](https://code.claude.com/docs/en/model-config#adjust-effort-level), [prompt-caching#changing-effort-level](https://code.claude.com/docs/en/prompt-caching#changing-effort-level) |
 | Alléger la liste des skills | `skillOverrides` : `name-only`, `user-invocable-only`, `off` | La description de chaque skill visible est envoyée à chaque session et à chaque sous-agent. `name-only` ne garde que le nom ; `user-invocable-only` cache le skill à Claude mais `/nom` reste possible. | Nul pour les skills conservés. Léger pour ceux passés en `name-only` : Claude les choisit moins bien sans description. | [officiel] [skills#override-skill-visibility-from-settings](https://code.claude.com/docs/en/skills#override-skill-visibility-from-settings) |
@@ -124,6 +162,10 @@ tâches. Les définitions sont dans [examples/agents/](../examples/agents/).
 | Gros volume simple et répétitif : tri, classement, filtrage, comptage, reformatage | `trieur` | Haiku 4.5 (pas d'effort) | La doc le propose pour les tâches simples. Une erreur isolée doit être sans gravité ; l'agent signale les cas ambigus. Outils limités à la lecture. Voir le retrait de Haiku plus bas. |
 | Lecture ou recherche pure dans le code | agent intégré Explore | modèle de la session (plafonné à Opus sur l'API Claude) | Ne charge ni `CLAUDE.md` ni l'état git [officiel : [sub-agents#what-loads-at-startup](https://code.claude.com/docs/en/sub-agents#what-loads-at-startup)]. |
 | Un travail court que la session peut faire directement | aucun sous-agent | modèle de la session | Un sous-agent repart avec son propre prompt, les `CLAUDE.md` et la même configuration de skills et de serveurs MCP, et ses requêtes comptent sur votre quota [officiel : [sub-agents#what-loads-at-startup](https://code.claude.com/docs/en/sub-agents#what-loads-at-startup), [costs#delegate-verbose-operations-to-subagents](https://code.claude.com/docs/en/costs#delegate-verbose-operations-to-subagents)]. |
+
+**Opus planifie, Sonnet exécute** [rapporté, à mesurer] : utile pour une grosse tâche, et pour reprendre
+une tâche qu'une exécution Sonnet a laissée partielle. À éviter pour chaque petite tâche : un plan Opus coûte
+presque autant qu'une petite tâche Sonnet. Mesurez sur une vingtaine de tâches avant de généraliser.
 
 Règles de conduite associées :
 
@@ -366,6 +408,7 @@ comme défaut du modèle, `s` ne l'applique qu'à la session (v2.1.257 ou plus).
 | Contexte de la session | `/context` | Grille d'usage, taille du listing des skills (budget appliqué), des serveurs MCP et des fichiers mémoire |
 | Quota et coût | `/usage`, puis `w` pour sept jours | Jauges d'usage du forfait, répartition par skills, sous-agents, MCP, boucles ; comportements à 10 % ou plus |
 | Coût des skills | `/skill-doctor`, `/doctor` | Coût en contexte de chaque skill et usage ; estimation du listing |
+| Dépense réelle | `python scripts/audit.py --depense --jours 5` (hors Claude Code) | Coût estimé en équivalent API, par projet, par modèle et pour les sous-agents, lu dans les champs `usage` de `~/.claude/projects/*/*.jsonl` (input, cache_creation, cache_read, output ; sous-agents dans les dossiers `subagents/`). Voir [USAGE.md](USAGE.md#mesurer-la-dépense-réelle). |
 | Configuration | `python scripts/audit.py --save avant.json`, puis `--compare avant.json` | Nombre de skills, taille du listing, serveurs MCP, réglages présents ou absents, et les deltas |
 
 [officiel : [costs#track-your-costs](https://code.claude.com/docs/en/costs#track-your-costs),
@@ -378,7 +421,7 @@ Pages officielles (`https://code.claude.com/docs/en/<page>.md`) : `costs`, `prom
 `context-window`, `memory`, `model-config`, `sub-agents`, `skills`, `mcp`, `env-vars`,
 `settings-reference`, `hooks`, `commands`, `interactive-mode`, `desktop`.
 Tarifs : [platform.claude.com/docs/en/about-claude/pricing](https://platform.claude.com/docs/en/about-claude/pricing)
-(consultée, aucun prix repris ici).
+(consultée le 2026-10-05 ; les prix par million de tokens sont repris dans la constante `PRICES` de `scripts/audit.py`, datée et sourcée, à revérifier).
 Dépréciations de modèles : [platform.claude.com/docs/en/about-claude/model-deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations)
 (consultée, date de retrait provisoire de Haiku 4.5 reprise).
 Retours tiers [rapporté] : [codersera](https://codersera.com/blog/how-to-stretch-claude-code-usage-limits-2026/)

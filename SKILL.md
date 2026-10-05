@@ -4,26 +4,27 @@ description: >
   Réduit la consommation de tokens et de quota de Claude Code sans perte de qualité : audit en
   lecture seule de la configuration (settings.json, CLAUDE.md, skills, serveurs MCP, sous-agents,
   hooks), rapport priorisé, application avec sauvegarde horodatée et accord de l'utilisateur, mesure
-  avant et après ; choix du bon sous-agent, modèle et effort selon la tâche (définitions d'agents
-  fournies). À utiliser quand l'utilisateur dit « économiser des tokens », « audit de
+  avant et après ; mesure de la dépense réelle depuis les transcriptions ; choix du bon sous-agent,
+  modèle et effort selon la tâche (définitions d'agents fournies). À utiliser quand l'utilisateur dit « économiser des tokens », « audit de
   consommation », « mon quota part vite », « pourquoi ma session coûte autant », « alléger mon
   contexte », « quel sous-agent ou quel modèle pour cette tâche », ou en anglais « reduce token
-  usage », « Claude Code usage limits », « audit my config for cost ». Leviers étiquetés officiel, rapporté ou à vérifier, avec source datée du
-  2026-10-01. Ne modifie rien sans accord ; n'affiche jamais de secret.
+  usage », « Claude Code usage limits », « audit my config for cost ». Leviers étiquetés officiel, rapporté ou à vérifier, avec source datée (docs
+  officielles du 2026-10-01, tarifs et mesures du 2026-10-05). Ne modifie rien sans accord ; n'affiche jamais de secret.
 license: MIT
 compatibility: >
   Claude Code (skills personnels ou par projet). Python 3.9+ pour scripts/audit.py et
   scripts/backup.py (bibliothèque standard seulement, aucun accès réseau). Windows, macOS, Linux.
 metadata:
   author: Anto1nx
-  version: "1.1.0"
+  version: "1.2.0"
   repository: https://github.com/RAAAAAGEEEEE/claude-code-token-saver
 allowed-tools: Read Bash(python:*) Bash(python3:*)
 ---
 
 # claude-code-token-saver
 
-Version 1.1.0, leviers vérifiés dans la documentation officielle le **2026-10-01**
+Version 1.2.0, leviers vérifiés dans la documentation officielle le **2026-10-01** (tarifs et mesures
+du **2026-10-05**)
 ([CHANGELOG.md](CHANGELOG.md)). Au-delà de 3 mois, revérifier les pages citées dans
 [docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md) : les noms de réglages et les seuils de Claude Code
 changent d'une version à l'autre.
@@ -80,6 +81,20 @@ claude.ai, les skills de plugins ni les serveurs intégrés à l'application : l
 
 Si Python est absent : lire les mêmes fichiers à la main avec la grille de
 [docs/USAGE.md](docs/USAGE.md#sans-python) et le dire dans le rapport.
+
+Pour savoir où part l'argent (et non seulement ce qui est chargé), mesurer la dépense réelle, en
+lecture seule :
+
+```bash
+python "${CLAUDE_SKILL_DIR}/scripts/audit.py" --depense --jours 5
+```
+
+Elle lit les champs `usage` des transcriptions et affiche le coût estimé (équivalent API) par projet,
+par modèle et pour les sous-agents ([docs/USAGE.md](docs/USAGE.md#mesurer-la-dépense-réelle)).
+Leçons mesurées sur un usage réel, à chercher dans cette sortie : sous-agents sans modèle déclaré qui
+héritent d'un modèle cher, nouveaux contextes qui réécrivent le cache (sous-agents et `claude -p` jetables),
+pipelines planifiés qui lancent le modèle pour rien. Détail et ordres de grandeur :
+[docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md#exemple-mesuré-sur-un-usage-réel--où-part-largent).
 
 ### 2. Rapport priorisé
 
@@ -175,6 +190,7 @@ tous les sous-agents, désactiver les skills intégrés, couper le cache. Liste 
 - « Mon quota Claude Code part vite, fais un audit. » : modes 1 et 2.
 - « Audit de consommation puis applique les changements sûrs. » : modes 1 à 3, avec accord à l'étape 3.
 - « J'ai appliqué tes réglages hier, ça a servi à quelque chose ? » : mode 4 avec `--compare`.
+- « Où part mon argent ? » : `audit.py --depense --jours N`, puis mode 2.
 - « Quel sous-agent, quel modèle et quel effort pour cette tâche ? » : section ci-dessus, table de
   décision ; installation des définitions avec accord.
 - « How do I reduce Claude Code token usage without losing quality? » : mode 2 sur la base de
