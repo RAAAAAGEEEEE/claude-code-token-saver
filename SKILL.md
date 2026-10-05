@@ -16,14 +16,14 @@ compatibility: >
   scripts/backup.py (bibliothèque standard seulement, aucun accès réseau). Windows, macOS, Linux.
 metadata:
   author: Anto1nx
-  version: "1.2.0"
+  version: "1.3.0"
   repository: https://github.com/RAAAAAGEEEEE/claude-code-token-saver
 allowed-tools: Read Bash(python:*) Bash(python3:*)
 ---
 
 # claude-code-token-saver
 
-Version 1.2.0, leviers vérifiés dans la documentation officielle le **2026-10-01** (tarifs et mesures
+Version 1.3.0, leviers vérifiés dans la documentation officielle le **2026-10-01** (tarifs et mesures
 du **2026-10-05**)
 ([CHANGELOG.md](CHANGELOG.md)). Au-delà de 3 mois, revérifier les pages citées dans
 [docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md) : les noms de réglages et les seuils de Claude Code
@@ -62,7 +62,25 @@ chargé pour rien, plafonner ce qui grossit sans limite, et le prouver par une m
 
 ## Déroulé
 
-Quatre modes, dans cet ordre. S'arrêter à la fin d'un mode si l'utilisateur ne demande que cela.
+Cinq étapes (0 à 4), dans cet ordre. S'arrêter à la fin d'une étape si l'utilisateur ne demande que cela ; l'étape 0 n'est jamais sautée
+pour un audit, sauf si toutes ses réponses sont déjà connues.
+
+### 0. Cadrage (questions à l'utilisateur)
+
+Avant tout audit, cadrer la demande. Si l'outil `AskUserQuestion` est disponible, poser les questions
+avec lui : 4 questions au plus, chacune avec 2 à 4 options. Sinon, les poser en texte, numérotées. **Ne
+pas poser une question dont la réponse est déjà dans la configuration ou dans la conversation** (exemple :
+un utilisateur qui a écrit « j'ai un abonnement Max » ; un `claude -p` visible dans ses scripts) : la
+reprendre et le dire.
+
+| Question | Options | Ce que ça change |
+|---|---|---|
+| a) Son accès à Claude | Pro ; Max 5x ; Max 20x ; API au paiement à l'usage ; Team ou Enterprise | L'objectif. Sur abonnement, on économise le quota sur 5 heures et sur la semaine. Sur l'API, on économise des euros réels (`audit.py --depense` y répond directement). |
+| b) Sa priorité | Ne plus atteindre les limites ; réduire la facture ; aller plus vite à qualité égale | L'ordre des constats et les leviers retenus. |
+| c) Son usage | Sessions interactives seules ; sous-agents nombreux ; automatisations (`claude -p` en cron ou en CI) ; plusieurs projets | Les leviers pertinents : sous-agents et modèle, conditions avant lancement d'un pipeline, `/clear` et fichiers de reprise. |
+| d) Ce qu'il refuse de sacrifier | Qualité sur le code critique ; rapidité ; rien d'interdit | Les leviers écartés : un levier qui touche à ce qui est refusé n'est pas proposé, ou l'est comme compromis explicite. |
+
+Les réponses (celles données et celles déduites) sont gardées pour l'étape 2.
 
 ### 1. Audit (lecture seule)
 
@@ -101,7 +119,10 @@ pipelines planifiés qui lancent le modèle pour rien. Détail et ordres de gran
 Présenter les constats du script, du plus utile au moins utile, complétés par les mesures de
 `/context` et `/usage` quand l'utilisateur les colle. Format :
 [exemple de rapport](#exemple-de-rapport). Trois points maximum en tête, en mots simples ; le détail
-technique ensuite. Pour chaque constat : ce qui est observé, pourquoi c'est coûteux, l'action, le
+technique ensuite. **Rappeler en tête du rapport les réponses de l'étape 0** (accès, priorité, usage,
+ce qui ne doit pas être sacrifié) et les utiliser : classer les constats selon la priorité, ne proposer
+que les leviers pertinents pour l'accès et l'usage, et lister à part les leviers écartés parce qu'ils
+touchent à ce que l'utilisateur refuse de sacrifier. Pour chaque constat : ce qui est observé, pourquoi c'est coûteux, l'action, le
 risque pour la qualité, l'étiquette de preuve et la source.
 
 ### 3. Application (avec accord)
@@ -187,8 +208,8 @@ tous les sous-agents, désactiver les skills intégrés, couper le cache. Liste 
 
 ## Exemples d'invocation
 
-- « Mon quota Claude Code part vite, fais un audit. » : modes 1 et 2.
-- « Audit de consommation puis applique les changements sûrs. » : modes 1 à 3, avec accord à l'étape 3.
+- « Mon quota Claude Code part vite, fais un audit. » : étape 0 (questions de cadrage), puis modes 1 et 2.
+- « Audit de consommation puis applique les changements sûrs. » : étapes 0 à 3, avec accord à l'étape 3.
 - « J'ai appliqué tes réglages hier, ça a servi à quelque chose ? » : mode 4 avec `--compare`.
 - « Où part mon argent ? » : `audit.py --depense --jours N`, puis mode 2.
 - « Quel sous-agent, quel modèle et quel effort pour cette tâche ? » : section ci-dessus, table de
@@ -201,6 +222,10 @@ tous les sous-agents, désactiver les skills intégrés, couper le cache. Liste 
 Illustratif : chiffres fictifs, tirés d'une configuration d'exemple.
 
 ```
+Votre cadre : abonnement Max 5x ; priorité : ne plus atteindre les limites ; usage : sous-agents
+nombreux ; à ne pas sacrifier : qualité sur le code critique (leviers touchant aux modèles des agents
+de revue : écartés).
+
 Trois choses à retenir
 1. Vos sessions longues relisent tout le contexte à chaque message : aucun plafond de
    compaction n'est réglé.

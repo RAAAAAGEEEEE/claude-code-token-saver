@@ -20,7 +20,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 DOCS_DATE = "2026-10-01"
 CHARS_PER_TOKEN = 4  # estimation grossière, étiquetée comme telle dans la sortie
 DEFAULT_DESC_CAP = 1536  # doc skills : plafond description + when_to_use dans le listing

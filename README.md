@@ -13,6 +13,25 @@ en lecture seule de la configuration, rapport priorisé, application avec sauveg
 accord de l'utilisateur, mesure avant et après, et choix du bon sous-agent, modèle et effort selon la
 tâche.
 
+## Comment ça marche
+
+Pour un débutant, trois gestes, et aucun copier-coller du dépôt dans la conversation :
+
+1. **Installer le skill une fois** : `git clone https://github.com/RAAAAAGEEEEE/claude-code-token-saver ~/.claude/skills/claude-code-token-saver`
+   (disponible dans tous vos projets), ou le même clone dans `.claude/skills/claude-code-token-saver` du
+   dépôt d'un projet (disponible dans ce projet seulement). Détail : [docs/INSTALLATION.md](docs/INSTALLATION.md).
+2. **Le demander** : dans n'importe quelle session Claude Code, écrivez simplement « audite ma
+   consommation de tokens », ou tapez `/claude-code-token-saver`.
+3. **Se laisser guider** : Claude charge le skill tout seul d'après sa description, vous pose d'abord
+   quelques questions de cadrage (votre accès à Claude, votre priorité, votre usage, ce que vous refusez de
+   sacrifier), puis suit pas à pas l'audit, le rapport, l'application avec votre accord et la mesure.
+
+C'est le fonctionnement de tous les skills Claude Code : un dossier avec un `SKILL.md` placé dans
+`~/.claude/skills/<nom>/` (personnel) ou `.claude/skills/<nom>/` (projet) ; Claude le charge
+automatiquement quand votre demande correspond à sa `description`, et `/<nom>` le lance à la main.
+[officiel : [skills](https://code.claude.com/docs/en/skills#where-skills-live), page consultée le
+2026-10-05]
+
 ## Le problème
 
 Claude Code renvoie toute la conversation à chaque requête. Une session ouverte toute la journée, des
@@ -49,7 +68,7 @@ monte, en particulier avec beaucoup de skills, de serveurs MCP et de sous-agents
 
 ## Statut
 
-**Bêta, version 1.2.0** (2026-10-05). Les deux scripts et les définitions d'agents d'exemple sont couverts
+**Bêta, version 1.3.0** (2026-10-05). Les deux scripts et les définitions d'agents d'exemple sont couverts
 par des tests hors ligne (`python -m unittest discover -s tests`). Le comportement de Claude avec le skill n'a pas
 d'évaluation automatique, et **aucun gain chiffré n'est promis** : Anthropic ne publie pas la
 pondération du quota ; seule votre mesure fait foi. Voir [docs/LIMITATIONS.md](docs/LIMITATIONS.md).

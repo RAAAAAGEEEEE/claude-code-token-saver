@@ -3,6 +3,24 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versions selon [SemVer](https://semver.org/lang/fr/).
 
+## [1.3.0] - 2026-10-05
+
+### Ajouté
+- `SKILL.md` : étape « 0. Cadrage (questions à l'utilisateur) » avant l'audit. Quatre questions au plus
+  (accès à Claude, priorité, usage, ce qu'on refuse de sacrifier), posées avec `AskUserQuestion` si l'outil
+  est disponible (2 à 4 options chacune), sinon en texte ; aucune question dont la réponse est déjà dans la
+  configuration ou la conversation. Le rapport de l'étape 2 rappelle ces réponses en tête et s'en sert
+  pour l'ordre des constats et les leviers proposés ou écartés (exemple de rapport mis à jour).
+- `README.md` : section « Comment ça marche » pour un débutant (installation une fois, demande en une
+  phrase ou `/claude-code-token-saver`, chargement automatique par la description), avec la page officielle
+  des skills consultée le 2026-10-05.
+- `tests/test_skill_structure.py` : l'étape 0, ses quatre questions et le rappel en tête de rapport sont
+  présents dans `SKILL.md` ; la section « Comment ça marche » existe dans le README ; les versions de
+  `SKILL.md`, `audit.py` et du changelog concordent.
+
+### Modifié
+- `audit.py` passe en 1.3.0 (aucun changement de comportement).
+
 ## [1.2.0] - 2026-10-05
 
 ### Ajouté
