@@ -14,6 +14,7 @@ claude-code-token-saver/
 ├── examples/
 │   ├── settings.example.json     réglages génériques
 │   ├── CLAUDE.md.example         paragraphe générique
+│   ├── delestage_garde.py        contrôle de ce qui part vers un autre fournisseur (exemple)
 │   └── agents/                   quatre définitions d'agents (executant, analyste, expert, trieur)
 ├── docs/                         documentation humaine (leviers, usage, limites…)
 ├── tests/                        tests des scripts et cohérence de la documentation

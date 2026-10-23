@@ -371,7 +371,10 @@ comme défaut du modèle, `s` ne l'applique qu'à la session (v2.1.257 ou plus).
    toucher à la session, déléguez à un type d'agent défini avec `model` et `effort`
    ([table de décision](#table-de-décision--tâche-vers-agent)). [officiel : [costs#choose-the-right-model](https://code.claude.com/docs/en/costs#choose-the-right-model),
    [prompt-caching#switching-models](https://code.claude.com/docs/en/prompt-caching#switching-models)]
-10. **Planifiées et équipes : surveiller.** Une tâche planifiée renvoie tout le contexte à chaque
+10. **Répartir le travail entre sessions, en fond et chez un tiers.** Conversation pilote et sessions
+    rattachées, file de fond cadencée par une ligne régulière, délestage de données publiques, sorties sans
+    répétition : [ORGANISER-LE-TRAVAIL.md](ORGANISER-LE-TRAVAIL.md).
+11. **Planifiées et équipes : surveiller.** Une tâche planifiée renvoie tout le contexte à chaque
     échéance ; un équipier d'agent consomme tant qu'il n'est pas arrêté. [officiel : [costs](https://code.claude.com/docs/en/costs)]
 
 ## Ce qui est écarté et pourquoi

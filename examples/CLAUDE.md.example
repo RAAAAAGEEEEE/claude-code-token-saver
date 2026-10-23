@@ -26,6 +26,17 @@ d'après la tâche et ne monter que si la tâche l'exige.
 - Lecture ou recherche pure : l'agent Explore. Un travail court que tu peux faire toi-même : pas de sous-agent.
 - Baisser l'effort avant de changer de modèle ; xhigh et max seulement si un gain est mesuré.
 
+## Réponses sans répétition
+
+- Une information n'apparaît qu'à un seul endroit de la réponse : pas de récapitulatif qui redit le corps,
+  pas de liste des options écartées.
+- Les actions et décisions que j'ai à prendre sont regroupées tout en haut de la réponse.
+
+## Délestage vers un autre fournisseur
+
+- Données vers un autre fournisseur : publiques seulement, jamais de code source, de clé ni de donnée
+  d'utilisateur ; vérifier ce qui part avant l'envoi.
+
 # Compact instructions
 
 Quand tu compactes, conserve : les décisions prises, les fichiers modifiés et pourquoi, les

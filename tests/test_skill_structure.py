@@ -45,6 +45,29 @@ class SkillStructureTests(unittest.TestCase):
         self.assertIn("/claude-code-token-saver", text)
         self.assertIn("https://code.claude.com/docs/en/skills", text)
 
+    def test_organiser_le_travail_section(self):
+        text = read("SKILL.md")
+        block = text[text.find("## Organiser le travail"):text.find("## Niveaux de preuve")]
+        self.assertGreater(len(block), 0)
+        for expected in ("Conversation pilote et sessions rattachées", "File de fond sur serveur",
+                         "Délester vers un autre fournisseur", "Sorties sans répétition",
+                         "100 %", "claude-lot", "docs/ORGANISER-LE-TRAVAIL.md", "examples/delestage_garde.py"):
+            self.assertIn(expected, block)
+
+    def test_organiser_le_travail_doc(self):
+        self.assertTrue((ROOT / "docs" / "ORGANISER-LE-TRAVAIL.md").exists())
+        text = read("docs/ORGANISER-LE-TRAVAIL.md")
+        for heading in ("## 1. Une conversation pilote", "## 2. Une file de fond", "## 3. Délester",
+                        "## 4. Des sorties sans répétition"):
+            self.assertIn(heading, text)
+        self.assertIn("constatée, à vérifier", text.lower())
+        self.assertIn("https://github.com/RAAAAAGEEEEE/claude-lot", text)
+        self.assertIn("ORGANISER-LE-TRAVAIL.md", read("README.md"))
+
+    def test_no_em_dash_in_new_texts(self):
+        for name in ("docs/ORGANISER-LE-TRAVAIL.md", "SKILL.md", "CHANGELOG.md"):
+            self.assertNotIn("—", read(name), name)
+
     def test_versions_agree(self):
         skill = re.search(r'version: "([^"]+)"', read("SKILL.md")).group(1)
         changelog = re.search(r"^## \[(\d+\.\d+\.\d+)\]", read("CHANGELOG.md"), re.M).group(1)

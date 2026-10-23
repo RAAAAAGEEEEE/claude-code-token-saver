@@ -28,6 +28,16 @@ champs `usage`, `model`, `timestamp` et l'identifiant du message : jamais le tex
 (test : `tests/test_depense.py`, `test_read_only_and_no_conversation_content`). Il affiche des noms de
 projets dérivés des noms de dossiers : à relire avant de partager la sortie.
 
+## Travail délesté vers un tiers
+
+Le skill n'envoie rien lui-même. La pratique « délester vers un autre fournisseur »
+([ORGANISER-LE-TRAVAIL.md](ORGANISER-LE-TRAVAIL.md#3-délester-vers-un-autre-fournisseur-le-travail-sur-données-publiques))
+exige : données publiques seulement ; jamais de code source, de clé, de jeton ni de donnée d'utilisateur
+vers un tiers ; un test qui vérifie ce qui part ; vérification des faits par Claude sur 100 % de ce qui est
+publié. `examples/delestage_garde.py` est un exemple de ce contrôle (liste blanche de champs, motifs de
+secrets), testé dans `tests/test_delestage_garde.py`, sans accès réseau et sans jamais recopier la valeur
+refusée.
+
 ## Ce que le rapport contient quand même
 
 Des **noms** : skills, serveurs MCP, chemins relatifs au dossier personnel (remplacé par `~`), et

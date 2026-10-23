@@ -4,8 +4,10 @@
 runs a read-only audit of your Claude Code setup (`settings.json`, `CLAUDE.md`, skills, MCP servers,
 subagents, hooks), ranks what to fix, applies changes only with your approval and a timestamped
 backup, then measures before and after. It also ships four generic subagent definitions and a
-decision table that proposes the agent, model and effort per task (an unmeasured convention). Every lever is labelled *official*, *reported* or *to verify*
-with a dated source (official docs checked on 2026-10-01, prices and measurements on 2026-10-05). Python standard library only, no network
+decision table that proposes the agent, model and effort per task (an unmeasured convention), plus four
+work-organisation practices (pilot conversation with attached sessions, background queue paced by a weekly
+line, offloading public-data work to another provider, repetition-free answers). Every lever is labelled *official*, *reported* or *to verify*
+with a dated source (official docs checked on 2026-10-01, prices and measurements on 2026-10-05, desktop page on 2026-10-23). Python standard library only, no network
 access, no secret ever printed. Documentation is in French.
 
 Skill Claude Code qui réduit la consommation de tokens et de quota **sans perte de qualité** : audit
@@ -63,12 +65,19 @@ monte, en particulier avec beaucoup de skills, de serveurs MCP et de sous-agents
   [examples/agents/](examples/agents/), une table de décision tâche vers agent
   ([docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md#choisir-le-sous-agent-le-modèle-et-leffort)), et
   un constat d'audit si aucune définition ne fixe l'effort.
+- Quatre **pratiques d'organisation du travail**
+  ([docs/ORGANISER-LE-TRAVAIL.md](docs/ORGANISER-LE-TRAVAIL.md)) : une conversation pilote qui lance des
+  sessions rattachées au bon modèle, une file de fond sur serveur cadencée par une ligne régulière de la
+  semaine (plafond au lancement : skill public [claude-lot](https://github.com/RAAAAAGEEEEE/claude-lot) ;
+  ligne régulière à ajouter), le délestage du
+  travail sur données publiques vers un autre fournisseur avec un garde-fou testé
+  ([examples/delestage_garde.py](examples/delestage_garde.py)), et des réponses sans répétition.
 - Des **exemples** génériques de `settings.json` et de paragraphe `CLAUDE.md`
   ([examples/](examples/)).
 
 ## Statut
 
-**Bêta, version 1.3.0** (2026-10-05). Les deux scripts et les définitions d'agents d'exemple sont couverts
+**Bêta, version 1.4.0** (2026-10-23). Les deux scripts et les définitions d'agents d'exemple sont couverts
 par des tests hors ligne (`python -m unittest discover -s tests`). Le comportement de Claude avec le skill n'a pas
 d'évaluation automatique, et **aucun gain chiffré n'est promis** : Anthropic ne publie pas la
 pondération du quota ; seule votre mesure fait foi. Voir [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
@@ -151,6 +160,7 @@ python ~/.claude/skills/claude-code-token-saver/scripts/audit.py --top 0 | grep 
 
 `SKILL.md` porte le déroulé et les règles dures ; `scripts/audit.py` mesure et signale ;
 `scripts/backup.py` sauvegarde avant toute modification ; `examples/agents/` fournit les types d'agents ;
+`examples/delestage_garde.py` montre le contrôle de ce qui part vers un tiers ;
 `docs/` porte le détail. Rien n'est écrit
 sans accord. Détail : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -171,6 +181,9 @@ partager. Détail : [docs/PRIVACY_AND_SECURITY.md](docs/PRIVACY_AND_SECURITY.md)
   montants de `--depense` sont des équivalents API, pas une facture.
 - Le script ne voit pas les connecteurs claude.ai, les serveurs intégrés à l'application, les skills
   de plugins ni les réglages gérés par une organisation.
+- Les pratiques d'organisation du travail (sessions rattachées, ligne régulière, délestage, sorties sans
+  répétition) sont des conventions de l'auteur, non mesurées. Une limite de modèle des sessions rattachées
+  sur Claude Code Desktop est constatée, non trouvée dans la documentation consultée (à vérifier).
 - La table de décision tâche vers agent est une convention proposée, non mesurée ; Haiku 4.5 a une date de
   retrait provisoire au plus tôt le 2026-10-15 (voir
   [docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md#haiku-et-son-retrait)).
@@ -202,6 +215,7 @@ Anthropic.
 
 - [SKILL.md](SKILL.md) : le déroulé lu par Claude
 - [docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md) : pour aller plus loin (leviers, actions manuelles, écartés)
+- [docs/ORGANISER-LE-TRAVAIL.md](docs/ORGANISER-LE-TRAVAIL.md) : conversation pilote, file de fond, délestage, sorties courtes
 - [docs/INSTALLATION.md](docs/INSTALLATION.md)
 - [docs/USAGE.md](docs/USAGE.md)
 - [docs/CONFIGURATION.md](docs/CONFIGURATION.md)

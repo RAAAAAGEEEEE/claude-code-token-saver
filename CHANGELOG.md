@@ -3,6 +3,26 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versions selon [SemVer](https://semver.org/lang/fr/).
 
+## [1.4.0] - 2026-10-23
+
+### Ajouté
+- `docs/ORGANISER-LE-TRAVAIL.md` : quatre pratiques d'organisation du travail (conversation pilote et sessions
+  rattachées, file de fond sur serveur, délestage vers un autre fournisseur, sorties sans répétition),
+  étiquetées conventions de l'auteur non mesurées. La limite de modèle des sessions rattachées sur Claude
+  Code Desktop y est notée « constatée, à vérifier » (non trouvée dans les parties lues de la page officielle).
+- `examples/delestage_garde.py` : exemple de contrôle de ce qui part vers un tiers (liste blanche de champs,
+  motifs de secrets, adresses e-mail et code), bibliothèque standard, sans réseau.
+- `tests/test_delestage_garde.py` et, dans `tests/test_skill_structure.py`, des tests de la section et du
+  document ajoutés.
+
+### Modifié
+- `SKILL.md` : section « Organiser le travail » (résumé des quatre pratiques, renvoi vers `claude-lot`) et
+  déclencheurs de la description.
+- `README.md`, `docs/LIMITATIONS.md`, `docs/PRIVACY_AND_SECURITY.md`, `docs/ARCHITECTURE.md`,
+  `docs/LEGAL_AND_ATTRIBUTION.md`, `docs/BONNES-PRATIQUES.md`, `examples/CLAUDE.md.example` mis à jour dans
+  le même commit.
+- `audit.py` passe en 1.4.0 (aucun changement de comportement).
+
 ## [1.3.0] - 2026-10-05
 
 ### Ajouté

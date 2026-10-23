@@ -5,9 +5,12 @@ description: >
   lecture seule de la configuration (settings.json, CLAUDE.md, skills, serveurs MCP, sous-agents,
   hooks), rapport priorisé, application avec sauvegarde horodatée et accord de l'utilisateur, mesure
   avant et après ; mesure de la dépense réelle depuis les transcriptions ; choix du bon sous-agent,
-  modèle et effort selon la tâche (définitions d'agents fournies). À utiliser quand l'utilisateur dit « économiser des tokens », « audit de
+  modèle et effort selon la tâche (définitions d'agents fournies) ; organisation du travail (conversation
+  pilote et sessions rattachées, file de fond sur serveur, délestage vers un autre fournisseur, sorties sans
+  répétition). À utiliser quand l'utilisateur dit « économiser des tokens », « audit de
   consommation », « mon quota part vite », « pourquoi ma session coûte autant », « alléger mon
-  contexte », « quel sous-agent ou quel modèle pour cette tâche », ou en anglais « reduce token
+  contexte », « quel sous-agent ou quel modèle pour cette tâche », « répartir le travail entre plusieurs sessions », « tâches de fond
+  sans épuiser la semaine », ou en anglais « reduce token
   usage », « Claude Code usage limits », « audit my config for cost ». Leviers étiquetés officiel, rapporté ou à vérifier, avec source datée (docs
   officielles du 2026-10-01, tarifs et mesures du 2026-10-05). Ne modifie rien sans accord ; n'affiche jamais de secret.
 license: MIT
@@ -16,15 +19,15 @@ compatibility: >
   scripts/backup.py (bibliothèque standard seulement, aucun accès réseau). Windows, macOS, Linux.
 metadata:
   author: Anto1nx
-  version: "1.3.0"
+  version: "1.4.0"
   repository: https://github.com/RAAAAAGEEEEE/claude-code-token-saver
 allowed-tools: Read Bash(python:*) Bash(python3:*)
 ---
 
 # claude-code-token-saver
 
-Version 1.3.0, leviers vérifiés dans la documentation officielle le **2026-10-01** (tarifs et mesures
-du **2026-10-05**)
+Version 1.4.0, leviers vérifiés dans la documentation officielle le **2026-10-01** (tarifs et mesures
+du **2026-10-05**, page de l'application de bureau du **2026-10-23**)
 ([CHANGELOG.md](CHANGELOG.md)). Au-delà de 3 mois, revérifier les pages citées dans
 [docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md) : les noms de réglages et les seuils de Claude Code
 changent d'une version à l'autre.
@@ -173,6 +176,32 @@ dans [docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md#choisir-le-sous-agent-l
 Ne jamais présenter l'`effortLevel` du `settings.json` utilisateur comme un moyen de régler l'effort
 d'Opus 5.5.
 
+## Organiser le travail
+
+Quatre pratiques de répartition du travail, détaillées dans
+[docs/ORGANISER-LE-TRAVAIL.md](docs/ORGANISER-LE-TRAVAIL.md). Ce sont des conventions de l'auteur,
+non mesurées **[à vérifier]** ; à proposer, jamais à imposer.
+
+1. **Conversation pilote et sessions rattachées.** La conversation principale reste sur le modèle fort et
+   sert de point d'entrée. Chaque tâche qui le mérite part dans une session rattachée avec le modèle et
+   l'effort adaptés (Haiku pour le volume simple ; Sonnet `medium` pour le courant ; Sonnet `high` pour les
+   textes publiés et l'analyse ; Opus pour l'architecture, la sécurité et la vérification des faits). On
+   reste dans la conversation pilote quand son modèle convient déjà, et pour toute action courte : une
+   session recharge le prompt système, `CLAUDE.md` et les skills. Limite **constatée, à vérifier** : sur
+   Claude Code Desktop, une session lancée par une autre ne peut pas utiliser un modèle plus fort que celui
+   de la session qui la lance.
+2. **File de fond sur serveur.** Les longs travaux autonomes (`claude -p` en tâche planifiée) ne démarrent
+   que si l'usage hebdomadaire est sous une ligne régulière (prorata du temps écoulé dans la fenêtre,
+   plafonné), décision prise dans le script, pas dans le prompt. Plafond commun au lancement :
+   [claude-lot](https://github.com/RAAAAAGEEEEE/claude-lot) (seuils constants, non recopié ici) ; la ligne
+   régulière est à ajouter par-dessus.
+3. **Délester vers un autre fournisseur** le travail sur données publiques (premiers jets, résolution à
+   l'aveugle, étiquetage). Claude garde la vérification des faits sur 100 % de ce qui est publié. Jamais de
+   code source, de clé ni de donnée d'utilisateur vers un tiers ; un test vérifie ce qui part
+   ([examples/delestage_garde.py](examples/delestage_garde.py)).
+4. **Sorties sans répétition.** Une information n'apparaît qu'à un seul endroit de la réponse, et les
+   actions ou décisions demandées à l'utilisateur sont regroupées en haut.
+
 ## Niveaux de preuve
 
 - **officiel** : page de documentation Anthropic (code.claude.com, platform.claude.com), citée avec
@@ -214,6 +243,8 @@ tous les sous-agents, désactiver les skills intégrés, couper le cache. Liste 
 - « Où part mon argent ? » : `audit.py --depense --jours N`, puis mode 2.
 - « Quel sous-agent, quel modèle et quel effort pour cette tâche ? » : section ci-dessus, table de
   décision ; installation des définitions avec accord.
+- « Comment répartir mes tâches entre plusieurs sessions sans payer le modèle fort partout ? » : section
+  « Organiser le travail », point 1.
 - « How do I reduce Claude Code token usage without losing quality? » : mode 2 sur la base de
   [docs/BONNES-PRATIQUES.md](docs/BONNES-PRATIQUES.md), sans audit si l'utilisateur n'en veut pas.
 

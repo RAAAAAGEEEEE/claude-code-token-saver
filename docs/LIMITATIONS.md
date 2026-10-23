@@ -18,6 +18,16 @@ Ce skill aide à retirer le superflu et à mesurer ; il ne garantit aucune écon
 - **La table de décision tâche vers agent** (modèles et efforts des quatre agents d'exemple) est une
   convention de l'auteur, non mesurée : seules les capacités (champs `model` et `effort`, ordre de
   résolution) sont établies par la documentation. Ajustez-la sur vos tâches.
+- **Les pratiques d'organisation du travail** ([ORGANISER-LE-TRAVAIL.md](ORGANISER-LE-TRAVAIL.md)) sont
+  des conventions de l'auteur, non mesurées : table de modèles des sessions rattachées, formule de la
+  ligne régulière, effet des sorties sans répétition sur le quota.
+- **Limite de modèle des sessions rattachées** : constatée par l'auteur le 2026-10-23 sur Claude Code
+  Desktop (pas de modèle plus fort que celui de la session qui lance), non trouvée dans les parties lues de la
+  page officielle de l'application de bureau. À tester avant de s'y fier.
+- **`claude-lot` 1.0.0 applique des seuils constants (réglables)** : la ligne régulière hebdomadaire est une règle à
+  ajouter par-dessus, ce dépôt n'en fournit pas l'implémentation.
+- **`examples/delestage_garde.py` est un filet minimal** : liste blanche de champs et motifs de secrets,
+  d'adresses e-mail et de code courants. Il ne détecte pas toute donnée personnelle ni tout code.
 - Le constat `agents-no-effort` dit seulement qu'aucune définition ne fixe l'effort ; il ne juge ni la
   pertinence des niveaux choisis ni la qualité des descriptions.
 

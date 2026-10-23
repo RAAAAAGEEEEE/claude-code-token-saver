@@ -15,6 +15,10 @@ La documentation officielle fait foi en cas d'écart.
 La page de dépréciations des modèles (platform.claude.com) a aussi été consultée le 2026-10-01 pour la
 date de retrait provisoire de Haiku 4.5.
 
+La page de l'application de bureau ([desktop](https://code.claude.com/docs/en/desktop)) et le dépôt public
+[claude-lot](https://github.com/RAAAAAGEEEEE/claude-lot) (version 1.0.0, même auteur, licence MIT) ont été
+consultés le 2026-10-23 pour [ORGANISER-LE-TRAVAIL.md](ORGANISER-LE-TRAVAIL.md) ; rien n'en est recopié.
+
 Deux articles tiers sont cités comme retours d'expérience, avec l'étiquette « rapporté » : aucun
 contenu n'en est repris.
 
