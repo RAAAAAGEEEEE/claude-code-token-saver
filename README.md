@@ -1,5 +1,7 @@
 # claude-code-token-saver
 
+[![AgentShield Security](https://merx.help/badge/A+.svg)](https://merx.help/shield)
+
 **In English.** A Claude Code skill that cuts token and quota usage **without losing quality**. It
 runs a read-only audit of your Claude Code setup (`settings.json`, `CLAUDE.md`, skills, MCP servers,
 subagents, hooks), ranks what to fix, applies changes only with your approval and a timestamped
